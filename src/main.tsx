@@ -1,23 +1,1359 @@
-import React,{useState,useEffect,useMemo} from 'react';import{createRoot}from'react-dom/client';import{Search,ShoppingBag,ArrowLeft,ArrowUpLeft,SlidersHorizontal,X,Plus,Minus,Phone,Mail,MapPin,Instagram,Clock,Check,Menu,ChevronDown,Sun,Moon,Scale}from'lucide-react';import Camera from './Camera';import{brands,categories,products,normalize,Product,businessConfig}from'./data';import './style.css';
-const fa=(n:number)=>n.toLocaleString('fa-IR');
-function App(){const[thumbs,setThumbs]=useState<string[]>([]),[q,setQ]=useState(new URLSearchParams(location.search).get('q')||''),[category,setCategory]=useState(new URLSearchParams(location.search).get('category')||''),[brand,setBrand]=useState(''),[space,setSpace]=useState(''),[connection,setConnection]=useState(''),[more,setMore]=useState(12),[allBrands,setAllBrands]=useState(false),[brandQ,setBrandQ]=useState(''),[detail,setDetail]=useState<Product|null>(null),[panel,setPanel]=useState(''),[compare,setCompare]=useState<number[]>([]),[basket,setBasket]=useState<Record<string,number>>(()=>{try{return JSON.parse(localStorage.getItem('didban-basket')||'{}')}catch{return{}}}),[prepared,setPrepared]=useState(false),[page,setPage]=useState(Number(new URLSearchParams(location.search).get('page')||1)),[catalogRoute,setCatalogRoute]=useState(location.pathname==='/products'),[night,setNight]=useState(70);
-useEffect(()=>{localStorage.setItem('didban-basket',JSON.stringify(basket))},[basket]);useEffect(()=>{const fn=()=>{setPanel('');setDetail(null)};const key=(e:KeyboardEvent)=>{if(e.key==='Escape')fn()};document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key)},[]);useEffect(()=>{const h=()=>{setCatalogRoute(location.pathname==='/products');setPage(Number(new URLSearchParams(location.search).get('page')||1))};addEventListener('popstate',h);return()=>removeEventListener('popstate',h)},[]);
-useEffect(()=>{if(!detail&&!panel)return;const previous=document.activeElement as HTMLElement;const dialog=document.querySelector('.drawer');const handle=(e:KeyboardEvent)=>{if(e.key!=='Tab'||!dialog)return;const items=Array.from(dialog.querySelectorAll<HTMLElement>('button,a,input,textarea,select,[tabindex]')).filter(x=>!x.hasAttribute('disabled'));const first=items[0],last=items[items.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()}};document.addEventListener('keydown',handle);return()=>{document.removeEventListener('keydown',handle);previous?.focus()}},[detail,panel]);
-const filtered=useMemo(()=>products.filter(p=>(!q||normalize(p.name+' '+p.modelCode+' '+p.category).includes(normalize(q)))&&(!category||p.category===category)&&!brand&&(!space||p.space===space)&&(!connection||p.connection===connection)),[q,category,brand,space,connection]);const visible=catalogRoute?filtered.slice((page-1)*24,page*24):filtered.slice(0,more);function navigate(pageNum=1){history.pushState({},'',`/products?page=${pageNum}${category?'&category='+encodeURIComponent(category):''}${q?'&q='+encodeURIComponent(q):''}`);setCatalogRoute(true);setPage(pageNum);document.getElementById('catalog')?.scrollIntoView({behavior:'smooth'})}function add(p:Product){setBasket(b=>({...b,[p.id]:(b[p.id]||0)+1}));setDetail(null);setPanel('basket')}const total=Object.values(basket).reduce((a,b)=>a+b,0);const img=(p:Product)=>thumbs[categories.indexOf(p.category)%6]||thumbs[0];
-return <><header><a className="wordmark" href="/" onClick={e=>{e.preventDefault();history.pushState({},'','/');setCatalogRoute(false);window.scrollTo(0,0)}}>دیدبان<span>DIDBAN</span></a><nav><a href="#catalog">محصولات</a><a href="#brands">برندها</a><button onClick={()=>setPanel('guide')}>راهنمای انتخاب</button><a href="#about">درباره ما</a><a href="#contact">تماس با ما</a></nav><div className="header-tools"><label className="header-search"><Search size={17}/><input placeholder="جستجوی محصول، برند یا مدل..." value={q} onChange={e=>{setQ(e.target.value);document.getElementById('catalog')?.scrollIntoView()}}/></label><button aria-label="سبد درخواست" onClick={()=>setPanel('basket')}><ShoppingBag size={21}/>{total>0&&<i>{fa(total)}</i>}</button><button className="mobile-menu" onClick={()=>setPanel('menu')} aria-label="فهرست"><Menu/></button></div></header>
-{!catalogRoute&&<><section className="story"><div className="story-sticky"><div className="stage-environment"/><div className="stage-event"><span>ورودی فروشگاه</span><p>رویداد نمونه · نمایش مفهومی</p><img src="/assets/store.png"/></div><div className="hero-copy"><span className="eyebrow">نگاهی دقیق‌تر. خیالی آسوده‌تر.</span><h1>هر زاویه،<br/>یک انتخاب دقیق.</h1><p>دوربین و تجهیزات نظارتی، از چند برند معتبر.</p><div className="actions"><a className="button dark" href="#catalog">مشاهده محصولات <ArrowLeft size={17}/></a><button className="text-button" onClick={()=>setPanel('guide')}>راهنمای انتخاب <ArrowUpLeft size={16}/></button></div></div><div className="timeline-copy"/><Camera onThumbs={setThumbs}/><div className="hero-bottom"><span>طراحی برای دیدنِ آنچه اهمیت دارد.</span><span>برای کشف جزئیات، اسکرول کنید <span className="scroll-line"/></span><span className="ltr">01 — 05</span></div></div></section>
-<section className="engineering"><div className="section-top"><div><span className="eyebrow">از نزدیک، دقیق‌تر</span><h2>جزئیات را ببینید.</h2><p>نمای مفهومی ساختار دوربین؛ از بدنه تا قلب تصویر.</p></div><span className="chapter-number">02 / ENGINEERING</span></div><div className="exploded"><div className="part shell">{thumbs[0]&&<img src={thumbs[0]}/>}</div><div className="assembly-ring big"/><div className="sensor"><i/></div><div className="assembly-ring leds">{Array.from({length:12},(_,i)=><b key={i} style={{transform:`rotate(${i*30}deg) translateY(-63px)`}}/>)}</div><div className="assembly-ring lens"/><div className="assembly-ring glass"/></div><div className="part-labels"><span>بدنه و پایه</span><span>برد حسگر</span><span>روشنایی مادون قرمز</span><span>مجموعه اپتیک</span></div><small>مدل نمایشی دیدبان · ساختار مفهومی، مستقل از برندهای فروشگاه</small></section>
-<section className="installation" style={{backgroundImage:'url(/assets/store.png)'}}><div className="install-shade" style={{opacity:night/160}}/><div className="install-copy"><span className="eyebrow">از جزئیات، به زندگی</span><h2>امنیت،<br/>در کنار کسب‌وکار شما.</h2><p>برای لحظه‌هایی که می‌خواهید با خیال راحت ادامه دهید.</p><span className="concept">نمایش مفهومی</span></div><div className="phone"><span className="ltr">19:24</span><div className="notification"><span className="event-dot"/> ورودی فروشگاه<small>رویداد نمونه · اکنون</small><img src="/assets/store.png"/></div></div><label className="day-control"><Sun size={18}/><input aria-label="مقایسه روز و شب" type="range" min="0" max="100" value={night} onChange={e=>setNight(+e.target.value)}/><Moon size={17}/></label></section>
-<section className="types wrap"><div className="section-top"><div><span className="eyebrow">هر فضا، یک راه‌حل</span><h2>برای فضای شما.</h2><p>فرم مناسب را پیدا کنید؛ از خانه تا کسب‌وکار.</p></div><button className="text-button" onClick={()=>setPanel('guide')}>به انتخاب کمک نیاز دارید؟ <ArrowLeft size={16}/></button></div><div className="type-grid">{categories.slice(0,4).map((c,i)=><button className="type-card" key={c} onClick={()=>{setCategory(c);document.getElementById('catalog')?.scrollIntoView({behavior:'smooth'})}}><img src={thumbs[i]} alt={`دوربین ${c}`}/><h3>دوربین {c}</h3><p>{['انعطاف در زاویه، مناسب ورودی‌ها','مناسب محیط‌های باز و پیرامونی','طراحی آرام برای فضاهای داخلی','برای پوشش گسترده‌تر محیط'][i]}</p><span>مشاهده محصولات <ArrowLeft size={15}/></span></button>)}</div></section>
-<section id="brands" className="brands wrap"><div className="section-top"><div><span className="eyebrow">انتخاب‌های بیشتر، نگاه تخصصی‌تر</span><h2>۵۰ برند، یک ویترین تخصصی.</h2><p>دایرکتوری برندهای تجهیزات نظارتی؛ بدون ادعای نمایندگی یا موجودی.</p></div><button className="button olive" onClick={()=>setAllBrands(!allBrands)}>{allBrands?'نمایش کمتر':'مشاهده همه برندها (۵۰)'} <ArrowLeft size={16}/></button></div>{allBrands&&<input className="brand-search" placeholder="جستجوی برند" value={brandQ} onChange={e=>setBrandQ(e.target.value)}/>}<div className={'brand-list '+(allBrands?'expanded':'')}>{brands.filter(b=>normalize(b).includes(normalize(brandQ))).slice(0,allBrands?50:10).map((b,i)=><button key={b} onClick={()=>{setBrand(b);document.getElementById('catalog')?.scrollIntoView({behavior:'smooth'})}} style={{color:['#b82d2b','#292d2a','#647899','#262923','#b42a24'][i%5]}}>{b}</button>)}</div></section></>}
-<section id="catalog" className="catalog wrap"><div className="section-top"><div><span className="eyebrow">یک نگاه، انتخاب‌های فراوان</span><h2>ویترین دوربین‌ها <span className="count">{fa(filtered.length)} دوربین</span></h2><p>مجموعه‌ای برای مقایسه فرم و کاربرد؛ تمام محصولات این ویترین، نمونه مفهومی هستند.</p></div><button className="text-button" onClick={()=>navigate()}>همه محصولات <ArrowUpLeft size={18}/></button></div><div className="filters"><label className="catalog-search"><Search size={18}/><input placeholder="جستجوی محصول یا مدل..." value={q} onChange={e=>{setQ(e.target.value);setPage(1)}}/></label><select value={category} onChange={e=>{setCategory(e.target.value);setPage(1)}}><option value="">همه دسته‌بندی‌ها</option>{categories.map(c=><option key={c}>{c}</option>)}</select><select value={brand} onChange={e=>setBrand(e.target.value)}><option value="">همه برندها</option>{brands.map(b=><option key={b}>{b}</option>)}</select><select value={space} onChange={e=>setSpace(e.target.value)}><option value="">همه فضاها</option><option>داخلی</option><option>بیرونی</option></select><select value={connection} onChange={e=>setConnection(e.target.value)}><option value="">همه اتصال‌ها</option><option>شبکه</option><option>وای‌فای</option><option>4G</option></select><button className="filter-reset" onClick={()=>{setQ('');setCategory('');setBrand('');setSpace('');setConnection('');setPage(1)}}><SlidersHorizontal size={17}/> پاک‌کردن</button></div>
-{visible.length===0?<div className="empty"><h3>محصولی با این انتخاب پیدا نشد.</h3><p>برای این برند موجودی تأییدشده‌ای ثبت نشده. فیلترها را تغییر دهید یا درخواست مشاوره آماده کنید.</p><a href="#contact" className="button olive">درخواست مشاوره <ArrowLeft size={16}/></a></div>:<div className="product-grid">{visible.map(p=><article className="product" key={p.id}><div role="button" tabIndex={0} className="product-image" onKeyDown={e=>{if(e.key==='Enter')setDetail(p)}} onClick={()=>setDetail(p)}><img src={img(p)} alt={p.name} loading="lazy"/><span className="sample">نمونه مفهومی</span><button className={'compare-toggle '+(compare.includes(p.id)?'selected':'')} aria-label="افزودن به مقایسه" onClick={e=>{e.stopPropagation();setCompare(v=>v.includes(p.id)?v.filter(id=>id!==p.id):v.length<3?[...v,p.id]:v)}}><Scale size={16}/></button></div><div className="product-info"><h3>{p.name}</h3><span className="model ltr">{p.modelCode}</span><div className="product-actions"><button onClick={()=>add(p)}>استعلام قیمت <ArrowLeft size={13}/></button><button onClick={()=>setDetail(p)}>جزئیات</button></div></div></article>)}</div>}
-<div className="catalog-bottom">{catalogRoute?<div className="pagination">{Array.from({length:Math.ceil(filtered.length/24)},(_,i)=><button className={page===i+1?'active':''} onClick={()=>navigate(i+1)} key={i}>{fa(i+1)}</button>)}</div>:<>{more<filtered.length&&<button className="button outline" onClick={()=>setMore(m=>m+12)}>نمایش بیشتر <Plus size={16}/></button>}<span>{fa(Math.min(more,filtered.length))} از {fa(filtered.length)} دوربین</span></>}</div></section>
-{compare.length>0&&<div className="compare-bar"><span>{fa(compare.length)} محصول برای مقایسه</span><button onClick={()=>setPanel('compare')}>مقایسه کنید <ArrowLeft size={15}/></button><button aria-label="پاک‌کردن مقایسه" onClick={()=>setCompare([])}><X size={16}/></button></div>}
-<section className="guidance"><div className="guide-business"><span className="eyebrow">متناسب با محیط شما</span><h2>برای کسب‌وکارها</h2><p>از ورودی و پیشخوان، تا انبار و محوطه.</p><button className="button light" onClick={()=>setPanel('guide')}>مشاهده راهنما <ArrowLeft size={16}/></button></div><div className="guide-home"><span className="eyebrow">آرامش، از درِ خانه</span><h2>برای منازل</h2><p>انتخابی متناسب با فضای خانه و نیاز شما.</p><button className="button light" onClick={()=>setPanel('guide')}>مشاهده راهنما <ArrowLeft size={16}/></button></div></section>
-<section id="about" className="about wrap"><div className="about-image"><img src="/assets/store.png" alt="نمای مفهومی نصب دوربین در ورودی فروشگاه"/><span>دیدبان / نگاهی به فضای شما</span></div><div><span className="eyebrow">همراه انتخاب شما</span><h2>انتخاب دقیق.<br/>همراهی مطمئن.</h2><p>از مقایسه و انتخاب محصول تا شناخت نیازهای نصب؛ اینجا می‌توانید دوربین مناسب فضای خود را پیدا کنید و یک درخواست مشاوره روشن آماده کنید.</p><a href="#contact" className="button olive">گفت‌وگو درباره نیاز شما <ArrowLeft size={16}/></a></div></section>
-<section className="faq wrap"><div><span className="eyebrow">پیش از انتخاب</span><h2>پرسش‌های متداول</h2><p>پاسخ به چند سؤال، برای یک انتخاب روشن‌تر.</p></div><div className="faq-items">{['کدام دوربین برای محیط من مناسب است؟','آیا همه دوربین‌ها دید در شب دارند؟','برای نصب به چه تجهیزاتی نیاز دارم؟','تفاوت دوربین شبکه و وای‌فای چیست؟','چگونه می‌توانم سفارش خود را ثبت کنم؟','آیا قیمت و موجودی محصولات قطعی است؟'].map((x,i)=><details key={x}><summary>{x}<ChevronDown size={16}/></summary><p>{['محیط داخلی یا بیرونی، نور، فاصله و مسیر کابل‌کشی در انتخاب مؤثرند. راهنمای انتخاب به شما کمک می‌کند گزینه‌ها را محدود کنید.','این قابلیت به مدل بستگی دارد. نوع نور مادون قرمز یا تصویربرداری رنگی را باید در مشخصات رسمی همان مدل بررسی کرد.','بسته به مدل، منبع تغذیه، کابل یا شبکه بی‌سیم و گاهی دستگاه ضبط نیاز است. بررسی محل نصب ضروری است.','دوربین شبکه می‌تواند اتصال سیمی داشته باشد؛ وای‌فای نوع اتصال بی‌سیم است و الزاماً دوربین را بی‌نیاز از برق نمی‌کند.','محصولات را به سبد درخواست اضافه کنید و خلاصه درخواست را آماده کنید. پرداخت آنلاین و ارسال درخواست هنوز متصل نیستند.','خیر. این ویترین شامل نمونه‌های مفهومی است؛ قیمت و موجودی واقعی باید از فروشگاه استعلام شوند.'][i]}</p></details>)}</div></section>
-<section id="contact" className="contact"><div className="contact-inner"><div><span className="eyebrow">شروع یک انتخاب بهتر</span><h2>برای انتخاب بهتر،<br/>با ما در تماس باشید.</h2><p>اطلاعات فروشگاه پس از تنظیم کانال‌های ارتباطی نمایش داده می‌شود.</p><div className="contact-details"><span><Phone size={17}/> تلفن: {businessConfig.phone || '[شماره فروشگاه]'}</span><span><Mail size={17}/> ایمیل: {businessConfig.email || '[ایمیل فروشگاه]'}</span><span><Phone size={17}/> واتس‌اپ: {businessConfig.whatsapp || '[شماره فروشگاه]'}</span><span><Instagram size={17}/> اینستاگرام: {businessConfig.instagram || '[حساب فروشگاه]'}</span><span><MapPin size={17}/> نشانی: {businessConfig.address || '[نشانی فروشگاه]'}</span><span><Clock size={17}/> ساعات کاری: {businessConfig.hours || '[ساعات فروشگاه]'}</span></div></div><form onSubmit={e=>{e.preventDefault();setPrepared(true)}}><input required placeholder="نام شما" aria-label="نام شما"/><input required type="tel" pattern="[0-9۰-۹+ ()-]{8,}" placeholder="شماره تماس" aria-label="شماره تماس"/><input required placeholder="محصول یا موضوع" aria-label="محصول یا موضوع"/><textarea required placeholder="پیام" aria-label="پیام"/><button className="button vermilion" type="submit">آماده‌سازی درخواست مشاوره <ArrowLeft size={17}/></button><small>{prepared?'درخواست آماده شد. کانال ارسال هنوز تنظیم نشده و پیامی ارسال نشده است.':'این فرم درخواست را محلی آماده می‌کند؛ ارسال آنلاین هنوز فعال نیست.'}</small></form></div></section>
-<footer className="wrap"><div className="footer-main"><div><a className="wordmark" href="#">دیدبان<span>DIDBAN</span></a><p>راهکارهای نظارتی،<br/>برای یک نگاه آگاهانه.</p></div>{[['محصولات','دوربین تورت','دوربین بولت','دوربین دام','تجهیزات نظارتی'],['برندها','Hikvision','Dahua','Uniview','Axis'],['راهنمای انتخاب','برای خانه','برای کسب‌وکار','شناخت اتصال‌ها','مقایسه محصولات'],['دیدبان','درباره ما','پرسش‌های متداول','تماس با ما','درخواست مشاوره']].map(col=><div key={col[0]}><h4>{col[0]}</h4>{col.slice(1).map(t=><a key={t} href={col[0]==='دیدبان'?'#contact':col[0]==='برندها'?'#brands':'#catalog'}>{t}</a>)}</div>)}</div><div className="footer-bottom"><span>© {fa(1405)} دیدبان. تمامی حقوق محفوظ است.</span><span>ویترین مفهومی تجهیزات نظارتی</span><span className="ltr">A clearer perspective.</span></div></footer>
-{(detail||panel)&&<div className="modal-backdrop" onClick={()=>{setPanel('');setDetail(null)}}><section className="drawer" role="dialog" aria-modal="true" aria-label="پنل دیدبان" onClick={e=>e.stopPropagation()}><button autoFocus className="close" aria-label="بستن" onClick={()=>{setPanel('');setDetail(null)}}><X/></button>{detail?<><img className="detail-image" src={img(detail)} alt={detail.name}/><span className="eyebrow">نمونه مفهومی · بدون برند</span><h2>{detail.name}</h2><p className="ltr">{detail.modelCode}</p><p>{detail.description}</p><dl><dt>کاربری</dt><dd>{detail.space}</dd><dt>اتصال پیشنهادی</dt><dd>{detail.connection}</dd><dt>وضوح / لنز / حفاظت</dt><dd>تعیین نشده — نیازمند انتخاب مدل واقعی</dd></dl><button className="button olive" onClick={()=>add(detail)}>افزودن به سبد درخواست <Plus size={17}/></button></>:panel==='basket'?<><span className="eyebrow">انتخاب‌های شما</span><h2>سبد درخواست</h2>{Object.entries(basket).length===0?<p>سبد شما هنوز خالی است. از ویترین، دوربین موردنظر را انتخاب کنید.</p>:Object.entries(basket).map(([id,n])=>{const p=products.find(p=>p.id===+id)!;return <div className="basket-row" key={id}><img src={img(p)}/><div><h3>{p.name}</h3><small>استعلام قیمت · نمونه مفهومی</small><div className="quantity"><button onClick={()=>setBasket(b=>({...b,[id]:Math.max(1,n-1)}))}><Minus size={14}/></button>{fa(n)}<button onClick={()=>setBasket(b=>({...b,[id]:n+1}))}><Plus size={14}/></button><button onClick={()=>setBasket(b=>{const v={...b};delete v[id];return v})}><X size={14}/></button></div></div></div>})}<p>قیمت مشخص نیست؛ پرداخت آنلاین فعال نشده است.</p><a href="#contact" onClick={()=>setPanel('')} className="button olive">آماده‌سازی درخواست <ArrowLeft size={17}/></a></>:panel==='guide'?<><span className="eyebrow">سه قدم تا انتخاب دقیق‌تر</span><h2>برای کدام فضا؟</h2><p>شرایط محیط را انتخاب کنید تا نمونه‌های مناسب‌تر را ببینید. این راهنما جایگزین بررسی فنی محل نصب نیست.</p><label>فضای نصب<select value={space} onChange={e=>setSpace(e.target.value)}><option value="">انتخاب کنید</option><option>داخلی</option><option>بیرونی</option></select></label><label>نور محیط<select><option>نور کافی در روز</option><option>نور محدود در شب</option><option>نور متغیر</option></select></label><label>امکان اتصال<select value={connection} onChange={e=>setConnection(e.target.value)}><option value="">انتخاب کنید</option><option>شبکه</option><option>وای‌فای</option><option>4G</option></select></label><p>در نور کم، قابلیت شب و روشنایی مکمل مدل واقعی باید بررسی شود.</p><a href="#catalog" className="button olive" onClick={()=>setPanel('')}>دیدن گزینه‌ها <ArrowLeft size={17}/></a></>:panel==='compare'?<><h2>مقایسه انتخاب‌ها</h2><div className="comparison">{compare.map(id=>{const p=products.find(p=>p.id===id)!;return <div key={id}><img src={img(p)}/><h3>{p.name}</h3><p>{p.category}</p><p>{p.space}</p><p>{p.connection}</p><p>مشخصات فنی: تعیین نشده</p><p>استعلام قیمت</p></div>})}</div></>:<nav className="mobile-nav">{['محصولات','برندها','درباره ما','تماس با ما'].map((v,i)=><a href={['#catalog','#brands','#about','#contact'][i]} onClick={()=>setPanel('')} key={v}>{v}</a>)}<button onClick={()=>setPanel('guide')}>راهنمای انتخاب</button></nav>}</section></div>}</>}
-createRoot(document.getElementById('root')!).render(<App/>);
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  lazy,
+  Suspense,
+} from "react";
+import { createRoot } from "react-dom/client";
+import {
+  Search,
+  ShoppingBag,
+  ArrowLeft,
+  ArrowUpLeft,
+  X,
+  Plus,
+  Minus,
+  Phone,
+  Mail,
+  MapPin,
+  Instagram,
+  Clock,
+  Menu,
+  Scale,
+  SlidersHorizontal,
+  Check,
+} from "lucide-react";
+import {
+  brands,
+  categories,
+  products,
+  normalize,
+  Product,
+  businessConfig,
+} from "./data";
+import StoryStage from "./StoryStage";
+import FAQ from "./FAQ";
+import ProductCard from "./ProductCard";
+import "./style.css";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+gsap.registerPlugin(ScrollTrigger);
+const Product3DViewer = lazy(() => import("./Product3DViewer"));
+const fa = (n: number) => n.toLocaleString("fa-IR");
+type Filters = {
+  q: string;
+  category: string;
+  brand: string;
+  space: string;
+  connection: string;
+  sort: string;
+  page: number;
+};
+const readFilters = (): Filters => {
+  const u = new URLSearchParams(location.search);
+  const requestedPage = Number(u.get("page"));
+  return {
+    q: u.get("q") || "",
+    category: u.get("category") || "",
+    brand: u.get("brand") || "",
+    space: u.get("space") || "",
+    connection: u.get("connection") || "",
+    sort: u.get("sort") || "",
+    page: Number.isFinite(requestedPage)
+      ? Math.max(1, Math.trunc(requestedPage))
+      : 1,
+  };
+};
+const emptyFilters: Filters = {
+  q: "",
+  category: "",
+  brand: "",
+  space: "",
+  connection: "",
+  sort: "",
+  page: 1,
+};
+const media = (p: Product) =>
+  (p as any).imageUrls?.[0] ||
+  `/assets/camera-${["turret", "bullet", "dome", "ptz", "indoor", "battery", "solar", "panorama", "doorbell", "thermal"][categories.indexOf(p.category)] || "bullet"}.png`;
+const price = (p: Product) =>
+  p.priceToman === null ? "استعلام قیمت" : `${fa(p.priceToman)} تومان`;
+
+function App() {
+  const [f, setF] = useState<Filters>(readFilters),
+    [route, setRoute] = useState(location.pathname === "/products"),
+    [more, setMore] = useState(12),
+    [panel, setPanel] = useState(""),
+    [detail, setDetail] = useState<Product | null>(null),
+    [compare, setCompare] = useState<number[]>([]),
+    [basket, setBasket] = useState<Record<string, number>>(() => {
+      try {
+        const v = JSON.parse(localStorage.getItem("didban-basket") || "{}");
+        return Object.fromEntries(
+          Object.entries(v).filter(
+            ([id, n]) =>
+              products.some((p) => p.id === +id) &&
+              typeof n === "number" &&
+              n > 0,
+          ),
+        ) as Record<string, number>;
+      } catch {
+        return {};
+      }
+    }),
+    [brandQ, setBrandQ] = useState(""),
+    [allBrands, setAllBrands] = useState(false),
+    [gallery, setGallery] = useState(0),
+    [viewer, setViewer] = useState(false),
+    [formSummary, setFormSummary] = useState(""),
+    [guide, setGuide] = useState({
+      space: "",
+      light: "",
+      connection: "",
+      power: "",
+    }),
+    [compareNote, setCompareNote] = useState("");
+  const drawer = useRef<HTMLElement>(null);
+  const open = !!(panel || detail);
+  useEffect(() => {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const ctx = gsap.context(() => {
+      document
+        .querySelectorAll(
+          ".section-heading h2,.selection h2,.about h2,.faq h2,.contact h2",
+        )
+        .forEach((el) => {
+          gsap.fromTo(
+            el,
+            { y: 22, clipPath: "inset(0% 0% 100% 0%)" },
+            {
+              y: 0,
+              clipPath: "inset(0% 0% 0% 0%)",
+              duration: 0.8,
+              ease: "power3.out",
+              scrollTrigger: { trigger: el, start: "top 92%", once: true },
+            },
+          );
+        });
+      gsap.fromTo(
+        ".selection-photo img",
+        { scale: 1.07 },
+        {
+          scale: 1,
+          ease: "none",
+          scrollTrigger: {
+            trigger: ".selection-photo",
+            start: "top bottom",
+            end: "bottom top",
+            scrub: true,
+          },
+        },
+      );
+    });
+    return () => ctx.revert();
+  }, [route]);
+  useEffect(() => {
+    localStorage.setItem("didban-basket", JSON.stringify(basket));
+  }, [basket]);
+  useEffect(() => {
+    const pop = () => {
+      setRoute(location.pathname === "/products");
+      setF(readFilters());
+      setPanel("");
+      setDetail(null);
+    };
+    addEventListener("popstate", pop);
+    return () => removeEventListener("popstate", pop);
+  }, []);
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.activeElement as HTMLElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focus = () =>
+      drawer.current?.querySelector<HTMLElement>("button")?.focus();
+    const timer = setTimeout(focus, 20);
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setPanel("");
+        setDetail(null);
+      }
+      if (e.key === "Tab") {
+        const nodes = Array.from(
+          drawer.current?.querySelectorAll<HTMLElement>(
+            'button:not([disabled]),a[href],input,textarea,select,[tabindex="0"]',
+          ) || [],
+        );
+        const first = nodes[0],
+          last = nodes[nodes.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", key);
+    return () => {
+      clearTimeout(timer);
+      document.body.style.overflow = overflow;
+      document.removeEventListener("keydown", key);
+      prev?.focus();
+    };
+  }, [open]);
+  const update = (patch: Partial<Filters>, catalog = route) => {
+    const next = { ...f, ...patch, page: patch.page ?? 1 };
+    setF(next);
+    setMore(12);
+    if (catalog) {
+      const u = new URLSearchParams();
+      Object.entries(next).forEach(([k, v]) => {
+        if (v && !(k === "page" && v === 1)) u.set(k, String(v));
+      });
+      history.pushState({}, "", `/products${u.size ? "?" + u : ""}`);
+      setRoute(true);
+    }
+  };
+  const goHome = (anchor = "") => {
+    history.pushState({}, "", "/" + anchor);
+    setRoute(false);
+    setPanel("");
+    setDetail(null);
+    setTimeout(
+      () =>
+        anchor
+          ? document
+              .querySelector(anchor)
+              ?.scrollIntoView({ behavior: "smooth" })
+          : window.scrollTo({ top: 0 }),
+      30,
+    );
+  };
+  const filtered = useMemo(() => {
+    const list = products.filter(
+      (p) =>
+        (!f.q ||
+          normalize(
+            `${p.name} ${p.modelCode} ${p.category} ${p.brandId || ""} ${p.description}`,
+          ).includes(normalize(f.q))) &&
+        (!f.category || p.category === f.category) &&
+        (!f.brand || String(p.brandId) === f.brand) &&
+        (!f.space || p.space.includes(f.space)) &&
+        (!f.connection || p.connection === f.connection),
+    );
+    // Interleave the merchandising groups so the opening showcase lets visitors
+    // compare forms immediately, rather than repeating one archetype twenty times.
+    const editorialOrder = (p: Product) =>
+      (Number(p.modelCode.split("-").at(-1)) - 1) * categories.length +
+      categories.indexOf(p.category);
+    list.sort((a, b) => editorialOrder(a) - editorialOrder(b));
+    if (f.sort === "low" || f.sort === "high")
+      list.sort((a, b) =>
+        a.priceToman === null
+          ? b.priceToman === null
+            ? 0
+            : 1
+          : b.priceToman === null
+            ? -1
+            : (a.priceToman - b.priceToman) * (f.sort === "low" ? 1 : -1),
+      );
+    return list;
+  }, [f]);
+  const pages = Math.max(1, Math.ceil(filtered.length / 24)),
+    page = Math.min(f.page, pages),
+    visible = route
+      ? filtered.slice((page - 1) * 24, page * 24)
+      : filtered.slice(0, more),
+    count = Object.values(basket).reduce((a, b) => a + b, 0),
+    selected = compare
+      .map((id) => products.find((p) => p.id === id)!)
+      .filter(Boolean),
+    basketRows = Object.entries(basket)
+      .map(([id, n]) => ({ p: products.find((p) => p.id === +id)!, n }))
+      .filter((v) => v.p),
+    pricedTotal = basketRows.reduce(
+      (t, { p, n }) => t + (p.priceToman || 0) * n,
+      0,
+    );
+  const close = () => {
+    setPanel("");
+    setDetail(null);
+    setViewer(false);
+  };
+  const showDetail = (p: Product) => {
+    setGallery(0);
+    setViewer(false);
+    setPanel("");
+    setDetail(p);
+  };
+  const add = (p: Product) => {
+    setBasket((b) => ({ ...b, [p.id]: (b[p.id] || 0) + 1 }));
+    setDetail(null);
+    setPanel("basket");
+  };
+  const toggleCompare = (id: number) => {
+    if (compare.includes(id)) {
+      setCompare(compare.filter((x) => x !== id));
+      setCompareNote("");
+    } else if (compare.length < 3) {
+      setCompare([...compare, id]);
+      setCompareNote("");
+    } else
+      setCompareNote(
+        "حداکثر سه نمونه را می‌توانید مقایسه کنید. یکی از انتخاب‌ها را حذف کنید.",
+      );
+  };
+  const catalogLink = (patch: Partial<Filters> = {}) => {
+    update(patch, true);
+    setPanel("");
+    setTimeout(
+      () =>
+        document
+          .getElementById("catalog")
+          ?.scrollIntoView({ behavior: "smooth" }),
+      20,
+    );
+  };
+  const thumb = (p: Product, cls = "") => (
+    <img
+      className={cls}
+      src={media(p)}
+      loading="lazy"
+      width="600"
+      height="420"
+      alt={p.name}
+      onError={(e) => {
+        e.currentTarget.src = "/assets/camera-bullet.png";
+        e.currentTarget.onerror = null;
+      }}
+    />
+  );
+  const card = (p: Product) => (
+    <ProductCard
+      key={p.id}
+      product={p}
+      compared={compare.includes(p.id)}
+      onDetail={showDetail}
+      onAdd={add}
+      onCompare={toggleCompare}
+    />
+  );
+  return (
+    <>
+      <a className="skip-link" href="#catalog">
+        عبور از روایت و مشاهده محصولات
+      </a>
+      <header className="site-header" inert={open}>
+        <a
+          className="wordmark"
+          href="/"
+          onClick={(e) => {
+            e.preventDefault();
+            goHome();
+          }}
+        >
+          دیدبان
+        </a>
+        <nav aria-label="فهرست اصلی">
+          <button onClick={() => catalogLink()}>محصولات</button>
+          <button onClick={() => goHome("#brands")}>برندها</button>
+          <button onClick={() => setPanel("guide")}>راهنمای انتخاب</button>
+          <button onClick={() => goHome("#services")}>خدمات</button>
+          <button onClick={() => goHome("#about")}>درباره ما</button>
+          <button onClick={() => goHome("#contact")}>تماس با ما</button>
+        </nav>
+        <div className="header-tools">
+          <form
+            className="header-search"
+            onSubmit={(e) => {
+              e.preventDefault();
+              catalogLink();
+            }}
+          >
+            <Search size={16} />
+            <input
+              aria-label="جستجوی محصولات"
+              placeholder="جستجوی محصول، برند یا مدل..."
+              value={f.q}
+              onChange={(e) => update({ q: e.target.value })}
+            />
+          </form>
+          <button
+            className="icon-button"
+            aria-label={`سبد درخواست، ${fa(count)} مورد`}
+            onClick={() => setPanel("basket")}
+          >
+            <ShoppingBag size={20} />
+            {count > 0 && <span className="basket-count">{fa(count)}</span>}
+          </button>
+          <button
+            className="icon-button mobile-menu"
+            aria-label="باز کردن فهرست"
+            onClick={() => setPanel("menu")}
+          >
+            <Menu />
+          </button>
+        </div>
+      </header>
+      <main inert={open}>
+        {!route && (
+          <>
+            <StoryStage />
+            <section className="types section wrap" id="types">
+              <div className="section-heading">
+                <div>
+                  <h2>برای فضای شما.</h2>
+                  <p>
+                    هر فضا، زاویه و نیاز خودش را دارد. از شکل دوربین شروع کنید.
+                  </p>
+                </div>
+                <button className="text-link" onClick={() => setPanel("guide")}>
+                  راهنمای انتخاب <ArrowUpLeft size={18} />
+                </button>
+              </div>
+              <div className="type-grid">
+                {[0, 1, 2, 3, 4, 8].map((i) => (
+                  <button
+                    key={i}
+                    className="type-item"
+                    onClick={() => catalogLink({ category: categories[i] })}
+                  >
+                    {thumb(products.find((p) => p.category === categories[i])!)}
+                    <h3>دوربین {categories[i]}</h3>
+                    <p>
+                      {
+                        [
+                          "دید دقیق در ورودی و محوطه",
+                          "بدنه کشیده برای فضای بیرونی",
+                          "فرم جمع‌وجور برای سقف و راهرو",
+                          "برای بررسی میدان دید متغیر",
+                          "برای اتاق و فضای داخلی",
+                          "نگاهی به ورودی خانه",
+                        ][[0, 1, 2, 3, 4, 8].indexOf(i)]
+                      }
+                    </p>
+                    <span>
+                      مشاهده نمونه‌ها <ArrowLeft size={15} />
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div className="equipment-index">
+                <span>همه نیازهای یک سیستم نظارتی</span>
+                {[
+                  "NVR / DVR",
+                  "کیت کامل",
+                  "شبکه و PoE",
+                  "حافظه نظارتی",
+                  "پایه، کابل و لوازم",
+                ].map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => {
+                      setPanel("inquiry");
+                      setFormSummary(`موضوع درخواست: ${t}`);
+                    }}
+                  >
+                    {t}
+                    <ArrowUpLeft size={15} />
+                  </button>
+                ))}
+              </div>
+            </section>
+            <section className="brands-section section wrap" id="brands">
+              <div className="section-heading">
+                <div>
+                  <h2>۵۰ برند، یک نگاه تخصصی.</h2>
+                  <p>
+                    دایرکتوری سازندگان تجهیزات؛ حضور در این فهرست به معنی موجودی
+                    یا نمایندگی نیست.
+                  </p>
+                </div>
+                <label className="small-search">
+                  <Search size={17} />
+                  <input
+                    aria-label="جستجوی برند"
+                    placeholder="جستجوی برند"
+                    value={brandQ}
+                    onChange={(e) => setBrandQ(e.target.value)}
+                  />
+                </label>
+              </div>
+              <div className="brand-grid" dir="ltr">
+                {brands
+                  .filter((b) => normalize(b).includes(normalize(brandQ)))
+                  .slice(0, allBrands || brandQ ? 50 : 12)
+                  .map((b) => (
+                    <button
+                      key={b}
+                      onClick={() =>
+                        catalogLink({
+                          brand: b.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+                        })
+                      }
+                    >
+                      {b}
+                    </button>
+                  ))}
+              </div>
+              {!brandQ && (
+                <button
+                  className="text-link brand-more"
+                  onClick={() => setAllBrands(!allBrands)}
+                >
+                  {allBrands ? "نمایش کوتاه‌تر" : "مشاهده همه ۵۰ برند"}{" "}
+                  <ArrowLeft size={16} />
+                </button>
+              )}
+            </section>
+          </>
+        )}
+        <section
+          className={`catalog section wrap ${route ? "catalog-route" : ""}`}
+          id="catalog"
+        >
+          <div className="section-heading">
+            <div>
+              {route && (
+                <button
+                  className="text-link breadcrumb"
+                  onClick={() => goHome()}
+                >
+                  دیدبان / محصولات
+                </button>
+              )}
+              <h2>{route ? "دوربین‌ها، از نزدیک." : "ویترین دوربین‌ها"}</h2>
+              <p>
+                نمونه‌ها را بررسی کنید، مقایسه کنید و برای انتخاب مدل واقعی
+                درخواست بدهید.
+              </p>
+            </div>
+            <span className="result-count">
+              {fa(filtered.length)} نمونه از {fa(products.length)}
+            </span>
+          </div>
+          <p className="catalog-note">
+            تمام دوربین‌های این ویترین نمونه‌های مفهومی DEMO و بدون برند هستند.
+            تصاویر، نمایش عمومی فرم دوربین‌اند؛ مشخصات، قیمت و موجودی مدل واقعی
+            تأیید نشده است.
+          </p>
+          <div className="filter-bar">
+            <label className="catalog-search">
+              <Search size={19} />
+              <input
+                placeholder="نام، گروه یا کد نمونه..."
+                aria-label="جستجوی ویترین"
+                value={f.q}
+                onChange={(e) => update({ q: e.target.value })}
+              />
+            </label>
+            {(
+              [
+                ["category", "همه گروه‌ها", categories],
+                ["brand", "همه برندها", brands],
+                ["space", "همه فضاها", ["داخلی", "بیرونی"]],
+                ["connection", "همه اتصال‌ها", ["شبکه", "وای‌فای", "4G"]],
+              ] as const
+            ).map(([key, label, options]) => (
+              <label className="filter-select" key={key}>
+                <span className="sr-only">{label}</span>
+                <select
+                  value={f[key]}
+                  onChange={(e) => update({ [key]: e.target.value })}
+                >
+                  <option value="">{label}</option>
+                  {options.map((v) => (
+                    <option
+                      key={v}
+                      value={
+                        key === "brand"
+                          ? v.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+                          : v
+                      }
+                    >
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+            <label className="filter-select">
+              <span className="sr-only">مرتب‌سازی</span>
+              <select
+                value={f.sort}
+                onChange={(e) => update({ sort: e.target.value })}
+              >
+                <option value="">ترتیب ویترین</option>
+                <option value="low">قیمت: کم به زیاد</option>
+                <option value="high">قیمت: زیاد به کم</option>
+              </select>
+            </label>
+            <button
+              className="reset-button"
+              onClick={() => update(emptyFilters)}
+            >
+              <SlidersHorizontal size={16} /> بازنشانی
+            </button>
+          </div>
+          {f.sort && (
+            <p className="filter-hint">
+              نمونه‌های بدون قیمت پس از محصولات قیمت‌دار قرار می‌گیرند.
+            </p>
+          )}
+          {visible.length ? (
+            <div className="product-grid">{visible.map(card)}</div>
+          ) : (
+            <div className="empty-state">
+              <h3>برای این ترکیب، نمونه‌ای نداریم.</h3>
+              <p>
+                {f.brand
+                  ? "دایرکتوری برندها مستقل از نمونه‌های بدون برند است. برای این برند، درخواست بررسی مدل واقعی آماده کنید."
+                  : "یک فیلتر را تغییر دهید یا راهنمای انتخاب را باز کنید."}
+              </p>
+              <button
+                className="button dark"
+                onClick={() => update(emptyFilters)}
+              >
+                بازنشانی فیلترها
+              </button>
+              <button className="text-link" onClick={() => goHome("#contact")}>
+                درخواست بررسی <ArrowLeft size={17} />
+              </button>
+            </div>
+          )}
+          <div className="catalog-bottom">
+            {route ? (
+              <nav className="pagination" aria-label="صفحات ویترین">
+                {Array.from({ length: pages }, (_, i) => (
+                  <button
+                    key={i}
+                    aria-current={page === i + 1 ? "page" : undefined}
+                    className={page === i + 1 ? "active" : ""}
+                    onClick={() => {
+                      update({ page: i + 1 }, true);
+                      document
+                        .getElementById("catalog")
+                        ?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                  >
+                    {fa(i + 1)}
+                  </button>
+                ))}
+              </nav>
+            ) : (
+              <>
+                <button
+                  className="button outline"
+                  disabled={more >= filtered.length}
+                  onClick={() => setMore(more + 12)}
+                >
+                  نمایش بیشتر <Plus size={16} />
+                </button>
+                <button className="text-link" onClick={() => catalogLink()}>
+                  مشاهده تمام دوربین‌ها <ArrowLeft size={17} />
+                </button>
+              </>
+            )}
+            <span>
+              {fa(
+                route
+                  ? (page - 1) * 24 + Math.min(24, visible.length)
+                  : visible.length,
+              )}{" "}
+              از {fa(filtered.length)} نمونه
+            </span>
+          </div>
+          {compareNote && <p role="status">{compareNote}</p>}
+          {selected.length > 0 && (
+            <div className="compare-bar">
+              <span>{fa(selected.length)} انتخاب برای مقایسه</span>
+              <button
+                className="button dark"
+                onClick={() => setPanel("compare")}
+              >
+                مقایسه انتخاب‌ها <Scale size={17} />
+              </button>
+              <button className="text-link" onClick={() => setCompare([])}>
+                پاک کردن
+              </button>
+            </div>
+          )}
+        </section>
+        {!route && (
+          <>
+            <section className="spaces section">
+              <div className="space-tile business">
+                <div>
+                  <h2>برای کسب‌وکارها</h2>
+                  <p>از پیشخوان و ورودی تا مسیرهای رفت‌وآمد.</p>
+                  <button
+                    className="button light"
+                    onClick={() => {
+                      setGuide({ ...guide, space: "بیرونی" });
+                      setPanel("guide");
+                    }}
+                  >
+                    راهنمای فضا <ArrowLeft size={16} />
+                  </button>
+                </div>
+              </div>
+              <div className="space-tile home">
+                <div>
+                  <h2>برای خانه</h2>
+                  <p>انتخابی متناسب با ورودی، اتاق و حیاط.</p>
+                  <button
+                    className="button light"
+                    onClick={() => {
+                      setGuide({ ...guide, space: "داخلی" });
+                      setPanel("guide");
+                    }}
+                  >
+                    راهنمای فضا <ArrowLeft size={16} />
+                  </button>
+                </div>
+              </div>
+            </section>
+            <section className="selection section wrap" id="guide">
+              <div>
+                <h2>
+                  انتخاب دقیق.
+                  <br />
+                  همراهی مطمئن.
+                </h2>
+                <p>
+                  پیش از انتخاب دوربین، از محیط شروع کنید. نور، مسیر کابل و برق،
+                  فاصله سوژه و هدف مشاهده، مسیر انتخاب را روشن می‌کنند.
+                </p>
+                <button
+                  className="button olive"
+                  onClick={() => setPanel("guide")}
+                >
+                  شروع راهنمای انتخاب <ArrowLeft size={18} />
+                </button>
+              </div>
+              <div className="selection-photo">
+                <img
+                  src="/assets/installation-editorial.png"
+                  alt="نمای مفهومی نصب یک دوربین در ورودی ساختمان"
+                  loading="lazy"
+                />
+                <span>نمای مفهومی نصب</span>
+              </div>
+            </section>
+            <section className="about section wrap" id="about">
+              <div className="section-heading">
+                <h2>
+                  دیدن بهتر،
+                  <br />
+                  از انتخاب آگاهانه شروع می‌شود.
+                </h2>
+                <p>
+                  دیدبان، یک ویترین برای شناخت شکل‌ها، کاربردها و تفاوت‌های
+                  تجهیزات نظارتی است. این نسخه برای بررسی مسیر انتخاب طراحی شده؛
+                  اطلاعات واقعی فروشگاه پس از تأیید اضافه می‌شود.
+                </p>
+              </div>
+              <div className="services" id="services">
+                {[
+                  [
+                    "مشاوره انتخاب",
+                    "شرایط فضا و هدف مشاهده را در درخواست خود بنویسید تا بررسی مدل واقعی ممکن شود.",
+                  ],
+                  [
+                    "بررسی نصب",
+                    "محل نصب، نور، برق و مسیر شبکه باید پیش از انتخاب نهایی بررسی شوند.",
+                  ],
+                  [
+                    "نگهداری و پشتیبانی",
+                    "دامنه خدمات، هزینه و شرایط پشتیبانی هنوز تنظیم نشده و باید از فروشگاه استعلام شود.",
+                  ],
+                ].map(([title, copy]) => (
+                  <article key={title}>
+                    <h3>{title}</h3>
+                    <p>{copy}</p>
+                    <button
+                      className="text-link"
+                      onClick={() => goHome("#contact")}
+                    >
+                      آماده‌سازی درخواست <ArrowUpLeft size={17} />
+                    </button>
+                  </article>
+                ))}
+              </div>
+            </section>
+            <FAQ />
+          </>
+        )}
+        <section className="contact section" id="contact">
+          <div className="contact-inner wrap">
+            <div>
+              <h2>
+                برای انتخاب بهتر،
+                <br />
+                با ما در تماس باشید.
+              </h2>
+              <p>
+                درخواست خود را آماده کنید. کانال‌های ارتباطی فروشگاه هنوز تنظیم
+                نشده‌اند.
+              </p>
+              <div className="contact-details">
+                {(
+                  [
+                    [Phone, "تلفن", businessConfig.phone, "شماره فروشگاه"],
+                    [
+                      Phone,
+                      "واتس‌اپ",
+                      businessConfig.whatsapp,
+                      "شماره فروشگاه",
+                    ],
+                    [Mail, "ایمیل", businessConfig.email, "ایمیل فروشگاه"],
+                    [
+                      Instagram,
+                      "اینستاگرام",
+                      businessConfig.instagram,
+                      "حساب فروشگاه",
+                    ],
+                    [MapPin, "نشانی", businessConfig.address, "نشانی فروشگاه"],
+                    [
+                      Clock,
+                      "ساعات کاری",
+                      businessConfig.hours,
+                      "ساعات فروشگاه",
+                    ],
+                  ] as const
+                ).map(([Icon, label, value, placeholder]) => (
+                  <div key={label}>
+                    <Icon size={18} />
+                    <span>
+                      {label}: {value || `[${placeholder}]`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                setFormSummary(
+                  `نام: ${fd.get("name")}\nشماره تماس: ${fd.get("phone")}\nموضوع: ${fd.get("subject")}\nپیام: ${fd.get("message")}${basketRows.length ? "\nانتخاب‌ها:\n" + basketRows.map(({ p, n }) => `${p.modelCode} × ${fa(n)}`).join("\n") : ""}`,
+                );
+              }}
+            >
+              <label>
+                <span>نام شما</span>
+                <input
+                  name="name"
+                  autoComplete="name"
+                  required
+                  placeholder="نام و نام خانوادگی"
+                />
+              </label>
+              <label>
+                <span>شماره تماس</span>
+                <input
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  pattern="[+]?(?:[0-9۰-۹٠-٩] *){8,15}"
+                  required
+                  placeholder="شماره برای هماهنگی"
+                />
+              </label>
+              <label>
+                <span>محصول یا موضوع</span>
+                <input
+                  name="subject"
+                  required
+                  placeholder="مثلاً انتخاب دوربین ورودی"
+                />
+              </label>
+              <label>
+                <span>پیام</span>
+                <textarea
+                  name="message"
+                  rows={4}
+                  required
+                  placeholder="فضا، نور و نیاز خود را توضیح دهید."
+                />
+              </label>
+              <button className="button vermilion" type="submit">
+                آماده‌سازی درخواست مشاوره <ArrowLeft size={18} />
+              </button>
+              <small>
+                این فرم خلاصه را روی دستگاه شما آماده می‌کند. ارسال آنلاین و
+                پرداخت فعال نیستند.
+              </small>
+              {formSummary && (
+                <div className="request-summary" role="status">
+                  <strong>درخواست آماده شد؛ پیامی ارسال نشده است.</strong>
+                  <pre>{formSummary}</pre>
+                  <button
+                    type="button"
+                    className="text-link"
+                    onClick={() => {
+                      const blob = new Blob([formSummary], {
+                          type: "text/plain;charset=utf-8",
+                        }),
+                        url = URL.createObjectURL(blob),
+                        a = document.createElement("a");
+                      a.href = url;
+                      a.download = "didban-request.txt";
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    دریافت خلاصه درخواست <ArrowLeft size={16} />
+                  </button>
+                </div>
+              )}
+            </form>
+          </div>
+        </section>
+      </main>
+      <footer className="site-footer wrap">
+        <div className="footer-main">
+          <div>
+            <button className="wordmark" onClick={() => goHome()}>
+              دیدبان
+            </button>
+            <p>
+              راهکارهای نظارتی،
+              <br />
+              برای یک نگاه آگاهانه.
+            </p>
+          </div>
+          <div>
+            <h3>محصولات</h3>
+            {categories.slice(0, 4).map((c) => (
+              <button key={c} onClick={() => catalogLink({ category: c })}>
+                دوربین {c}
+              </button>
+            ))}
+            <button onClick={() => catalogLink(emptyFilters)}>
+              همه دوربین‌ها
+            </button>
+          </div>
+          <div>
+            <h3>راهنمای انتخاب</h3>
+            <button onClick={() => setPanel("guide")}>
+              برای خانه و کسب‌وکار
+            </button>
+            <button onClick={() => setPanel("compare")}>مقایسه محصولات</button>
+            <button onClick={() => goHome("#faq")}>شناخت اتصال‌ها</button>
+          </div>
+          <div>
+            <h3>درباره دیدبان</h3>
+            <button onClick={() => goHome("#about")}>درباره ما</button>
+            <button onClick={() => goHome("#services")}>
+              خدمات و پشتیبانی
+            </button>
+            <button onClick={() => goHome("#brands")}>دایرکتوری برندها</button>
+          </div>
+          <div>
+            <h3>ارتباط</h3>
+            <button onClick={() => goHome("#contact")}>درخواست مشاوره</button>
+            <button onClick={() => goHome("#faq")}>پرسش‌های متداول</button>
+            <button onClick={() => setPanel("privacy")}>
+              حریم خصوصی این نسخه
+            </button>
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <span>© {fa(1405)} دیدبان</span>
+          <span>ویترین مفهومی · قیمت و موجودی نیازمند استعلام</span>
+          <span dir="ltr">A considered perspective.</span>
+        </div>
+      </footer>
+      {open && (
+        <div
+          className="modal-backdrop"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) close();
+          }}
+        >
+          <section
+            ref={drawer}
+            className={`drawer ${panel === "compare" ? "wide-drawer" : ""}`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="drawer-title"
+          >
+            <button
+              className="close icon-button"
+              aria-label="بستن پنل"
+              onClick={close}
+            >
+              <X />
+            </button>
+            {detail ? (
+              <>
+                <div className="detail-media">
+                  {viewer ? (
+                    <Suspense
+                      fallback={<p>در حال آماده‌سازی نمای سه‌بعدی...</p>}
+                    >
+                      <Product3DViewer
+                        category={detail.conceptShape}
+                        finish={detail.visualVariant.finish}
+                        orientation={detail.visualVariant.orientation}
+                      />
+                    </Suspense>
+                  ) : (
+                    <img
+                      src={
+                        (detail as any).imageUrls?.[gallery] || media(detail)
+                      }
+                      alt={detail.name}
+                    />
+                  )}
+                </div>
+                <div className="gallery-controls">
+                  {((detail as any).imageUrls || [media(detail)]).map(
+                    (src: string, i: number) => (
+                      <button
+                        className={gallery === i && !viewer ? "active" : ""}
+                        key={src}
+                        onClick={() => {
+                          setGallery(i);
+                          setViewer(false);
+                        }}
+                        aria-label={`نمای ${fa(i + 1)}`}
+                      >
+                        <img src={src} alt="" />
+                      </button>
+                    ),
+                  )}
+                  <button
+                    className="text-link"
+                    onClick={() => setViewer(!viewer)}
+                  >
+                    {viewer ? "نمای ثابت" : "نمای سه‌بعدی مفهومی"}
+                  </button>
+                </div>
+                <span className="demo-note">نمونه مفهومی DEMO · بدون برند</span>
+                <h2 id="drawer-title">{detail.name}</h2>
+                <p className="model-code" dir="ltr">
+                  {detail.modelCode}
+                </p>
+                <p>{detail.description}</p>
+                <dl className="spec-list">
+                  <div>
+                    <dt>گروه</dt>
+                    <dd>{detail.category}</dd>
+                  </div>
+                  <div>
+                    <dt>فضا</dt>
+                    <dd>{detail.space}</dd>
+                  </div>
+                  <div>
+                    <dt>مسیر اتصال پیشنهادی</dt>
+                    <dd>{detail.connection}</dd>
+                  </div>
+                  <div>
+                    <dt>وضوح، لنز و حفاظت</dt>
+                    <dd>تأیید نشده؛ نیازمند انتخاب مدل واقعی</dd>
+                  </div>
+                  <div>
+                    <dt>قیمت و موجودی</dt>
+                    <dd>{price(detail)} · تأیید نشده</dd>
+                  </div>
+                </dl>
+                <p className="fine-print">
+                  تصویر و مدل سه‌بعدی، فرم عمومی این گروه را نشان می‌دهند و مدل
+                  دقیق یک سازنده نیستند.
+                </p>
+                <button
+                  className="button olive full"
+                  onClick={() => add(detail)}
+                >
+                  افزودن به سبد درخواست <Plus size={17} />
+                </button>
+                <h3 className="related-title">نمونه‌های نزدیک</h3>
+                <div className="related-products">
+                  {products
+                    .filter(
+                      (p) =>
+                        p.category === detail.category && p.id !== detail.id,
+                    )
+                    .slice(0, 3)
+                    .map((p) => (
+                      <button key={p.id} onClick={() => showDetail(p)}>
+                        {thumb(p)}
+                        <span>{p.name}</span>
+                      </button>
+                    ))}
+                </div>
+              </>
+            ) : panel === "basket" ? (
+              <>
+                <h2 id="drawer-title">سبد درخواست</h2>
+                <p>انتخاب‌های شما برای بررسی مدل واقعی.</p>
+                {basketRows.length ? (
+                  basketRows.map(({ p, n }) => (
+                    <div className="basket-row" key={p.id}>
+                      {thumb(p)}
+                      <div>
+                        <h3>{p.name}</h3>
+                        <span>{price(p)}</span>
+                        <div className="quantity">
+                          <button
+                            aria-label="کاهش تعداد"
+                            disabled={n === 1}
+                            onClick={() =>
+                              setBasket({ ...basket, [p.id]: n - 1 })
+                            }
+                          >
+                            <Minus size={15} />
+                          </button>
+                          <span>{fa(n)}</span>
+                          <button
+                            aria-label="افزایش تعداد"
+                            onClick={() =>
+                              setBasket({ ...basket, [p.id]: n + 1 })
+                            }
+                          >
+                            <Plus size={15} />
+                          </button>
+                          <button
+                            aria-label={`حذف ${p.name}`}
+                            onClick={() =>
+                              setBasket((b) => {
+                                const next = { ...b };
+                                delete next[p.id];
+                                return next;
+                              })
+                            }
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state">
+                    <h3>سبد شما هنوز خالی است.</h3>
+                    <p>از ویترین، نمونه‌ای برای بررسی انتخاب کنید.</p>
+                  </div>
+                )}
+                {pricedTotal > 0 && (
+                  <p>جمع اقلام قیمت‌دار: {fa(pricedTotal)} تومان</p>
+                )}
+                <p>
+                  {fa(
+                    basketRows
+                      .filter((v) => v.p.priceToman === null)
+                      .reduce((a, v) => a + v.n, 0),
+                  )}{" "}
+                  مورد نیازمند استعلام قیمت
+                </p>
+                <p className="fine-print">
+                  این سبد، درخواست بررسی است. پرداخت آنلاین و ثبت سفارش فعال
+                  نیستند.
+                </p>
+                <button
+                  className="button olive full"
+                  disabled={!basketRows.length}
+                  onClick={() => goHome("#contact")}
+                >
+                  آماده‌سازی درخواست <ArrowLeft size={17} />
+                </button>
+              </>
+            ) : panel === "compare" ? (
+              <>
+                <h2 id="drawer-title">مقایسه انتخاب‌ها</h2>
+                <p>
+                  تا سه نمونه را کنار هم بررسی کنید. مشخصات نامعلوم، تأیید نشده
+                  باقی می‌مانند.
+                </p>
+                {selected.length ? (
+                  <div className="table-scroll">
+                    <table className="comparison-table">
+                      <thead>
+                        <tr>
+                          <th>ویژگی</th>
+                          {selected.map((p) => (
+                            <th key={p.id}>
+                              {thumb(p)}
+                              <h3>{p.name}</h3>
+                              <button
+                                className="text-link"
+                                onClick={() => toggleCompare(p.id)}
+                              >
+                                حذف <X size={14} />
+                              </button>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[
+                          ["کد نمونه", (p: Product) => p.modelCode],
+                          ["گروه", (p: Product) => p.category],
+                          ["فضا", (p: Product) => p.space],
+                          ["اتصال پیشنهادی", (p: Product) => p.connection],
+                          ["وضوح / لنز", () => "تأیید نشده"],
+                          ["دید در شب", () => "نیازمند بررسی مدل واقعی"],
+                          ["قیمت", (p: Product) => price(p)],
+                        ].map(([label, get]) => (
+                          <tr key={label as string}>
+                            <th>{label as string}</th>
+                            {selected.map((p) => (
+                              <td key={p.id}>
+                                {(get as (p: Product) => string)(p)}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p>از دکمه ترازو در کارت‌ها، نمونه انتخاب کنید.</p>
+                )}
+              </>
+            ) : panel === "guide" ? (
+              <>
+                <h2 id="drawer-title">برای کدام فضا؟</h2>
+                <p>
+                  چهار پرسش کوتاه برای محدود کردن گزینه‌ها. این راهنما جایگزین
+                  طراحی و بازدید فنی نیست.
+                </p>
+                {(
+                  [
+                    ["space", "فضای نصب", ["داخلی", "بیرونی"]],
+                    [
+                      "light",
+                      "نور محیط",
+                      ["نور کافی", "نور کم در شب", "نور متغیر"],
+                    ],
+                    ["connection", "شبکه در محل", ["شبکه", "وای‌فای", "4G"]],
+                    [
+                      "power",
+                      "برق و کابل‌کشی",
+                      [
+                        "برق و کابل شبکه فراهم است",
+                        "برق هست، کابل شبکه ممکن نیست",
+                        "برق ثابت در دسترس نیست",
+                      ],
+                    ],
+                  ] as const
+                ).map(([key, label, opts]) => (
+                  <label className="guide-label" key={key}>
+                    {label}
+                    <select
+                      value={guide[key]}
+                      onChange={(e) =>
+                        setGuide({ ...guide, [key]: e.target.value })
+                      }
+                    >
+                      <option value="">انتخاب کنید</option>
+                      {opts.map((v) => (
+                        <option key={v}>{v}</option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+                <div className="guide-advice">
+                  <h3>پیش از انتخاب نهایی</h3>
+                  <p>
+                    {guide.light === "نور کم در شب"
+                      ? "نور کم: قابلیت شب، روشنایی مکمل و فاصله سوژه را در مدل واقعی بررسی کنید."
+                      : "نور و زاویه تابش در ساعات مختلف روز باید بررسی شود."}
+                  </p>
+                  <p>
+                    {guide.power === "برق ثابت در دسترس نیست"
+                      ? "گروه باتری‌خور یا خورشیدی نقطه شروع است؛ دوام باتری و توان خورشیدی بدون بررسی محل قابل تعیین نیست."
+                      : guide.connection === "وای‌فای"
+                        ? "کیفیت سیگنال و دسترسی به برق باید در محل نصب بررسی شود."
+                        : guide.connection === "4G"
+                          ? "پوشش اپراتور، مصرف داده و تغذیه مستقل باید بررسی شود."
+                          : "مسیر کابل، طول مسیر و سازگاری PoE نیازمند بررسی فنی است."}
+                  </p>
+                </div>
+                <button
+                  className="button olive full"
+                  onClick={() => {
+                    catalogLink({
+                      space: guide.space,
+                      connection: guide.connection,
+                      category:
+                        guide.power === "برق ثابت در دسترس نیست"
+                          ? "باتری‌خور"
+                          : "",
+                      q: "",
+                      brand: "",
+                    });
+                    close();
+                  }}
+                >
+                  دیدن نمونه‌های مرتبط <ArrowLeft size={17} />
+                </button>
+              </>
+            ) : panel === "privacy" ? (
+              <>
+                <h2 id="drawer-title">حریم خصوصی این نسخه</h2>
+                <p>
+                  سبد درخواست در حافظه محلی مرورگر شما ذخیره می‌شود. فرم،
+                  خلاصه‌ای محلی ایجاد می‌کند و هیچ پیامی به فروشگاه ارسال
+                  نمی‌کند. این نسخه سرویس پرداخت، رهگیری بازدید یا حساب کاربری
+                  ندارد.
+                </p>
+                <button
+                  className="button outline"
+                  onClick={() => {
+                    localStorage.removeItem("didban-basket");
+                    setBasket({});
+                  }}
+                >
+                  پاک کردن سبد محلی
+                </button>
+              </>
+            ) : panel === "inquiry" ? (
+              <>
+                <h2 id="drawer-title">درخواست تجهیزات</h2>
+                <p>{formSummary}</p>
+                <p>
+                  تجهیزات ضبط، شبکه و نصب به بررسی سازگاری با مدل واقعی نیاز
+                  دارند. در این ویترین، موجودی آن‌ها تأیید نشده است.
+                </p>
+                <button
+                  className="button olive"
+                  onClick={() => goHome("#contact")}
+                >
+                  ادامه در فرم درخواست <ArrowLeft size={17} />
+                </button>
+              </>
+            ) : (
+              <>
+                <h2 id="drawer-title">دیدبان</h2>
+                <nav className="mobile-nav">
+                  <button
+                    onClick={() => {
+                      catalogLink();
+                      close();
+                    }}
+                  >
+                    محصولات
+                  </button>
+                  <button onClick={() => goHome("#brands")}>برندها</button>
+                  <button onClick={() => setPanel("guide")}>
+                    راهنمای انتخاب
+                  </button>
+                  <button onClick={() => goHome("#about")}>درباره ما</button>
+                  <button onClick={() => goHome("#contact")}>تماس با ما</button>
+                </nav>
+              </>
+            )}
+          </section>
+        </div>
+      )}
+    </>
+  );
+}
+createRoot(document.getElementById("root")!).render(<App />);
