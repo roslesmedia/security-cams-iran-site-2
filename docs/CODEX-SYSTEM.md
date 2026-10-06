@@ -1,24 +1,53 @@
 # Codex system in this repository
 
-This repo is configured so the operating rules do not depend on an old chat.
+This repository is the master source for the **Kian Cinematic Web System**.
 
-## Always-on layer
-`AGENTS.md` is the master coordinator. Codex CLI/app automatically reads repository AGENTS instructions. It tells Codex how to select and apply the local skills, how to run the website-team review loop, and how to preserve the existing deployment workflow.
+## What is automatic
 
-## Skill layer
-`skills/` contains the reusable website skill library. The 50 animated/3D skills originally stored in the YGA repository are mirrored here in Codex-friendly paths. `plugin.json` packages the folder as a portable Agent Plugin for runtimes that support plugin discovery.
+### In this repository
+- `AGENTS.md` supplies project-specific operating rules.
+- `.agents/plugins/marketplace.json` exposes the plugin locally.
+- `.codex/config.toml` enables the plugin for trusted Codex clients.
+- `plugin.json` is the portable Agent Plugin manifest.
+- `.codex-plugin/plugin.json` is the Codex compatibility manifest.
+- `skills/` contains the reusable website skill library.
 
-The system deliberately lazy-loads relevant skills rather than injecting all skill instructions into every task.
+### Across every Codex project on one machine
+Run `scripts/install-global-codex-system.sh` once on that machine. It:
+1. adds/updates the Kian block in `~/.codex/AGENTS.md`;
+2. adds this GitHub repo as a Codex plugin marketplace;
+3. enables `kian-cinematic-web-system@kian-codex-web` in the user Codex config.
 
-## Team layer
-`docs/AGENT-TEAM.md` defines five roles:
-Creative/Visual, 3D/Motion, Frontend/Systems, Performance/Accessibility, and Visual QA/Release.
+Codex automatically enumerates global `~/.codex/AGENTS.md` before repository-specific AGENTS instructions. The global rules are intentionally adaptive: website tasks use the cinematic web plugin and specialist workflow, while unrelated repositories do not get forced into website-specific behavior.
 
-If real subagents are supported in the active Codex runtime, tasks can be delegated. If they are not, Codex performs the same roles as sequential review passes.
+## New GitHub repository bootstrap
 
-## Verification prompt
-A useful first instruction in Codex is:
+`bootstrap/` contains the lightweight files that can be copied into a newly created repository:
+- `AGENTS.md`
+- `.agents/plugins/marketplace.json` pointing back to this master repo
+- `.codex/config.toml` enabling the plugin
 
-"Read AGENTS.md, skills/README.md, skills/award-site-architecture/SKILL.md and skills/website-agent-orchestration/SKILL.md. Report the relevant skills you would use for this task, then proceed."
+This means new repos do not need their own duplicated copy of the 50+ skill folders.
 
-You should not need to repeat the whole design system again.
+## Website team
+
+For substantial website tasks the system uses these review roles:
+1. Creative / Visual Director
+2. 3D & Motion Director
+3. Frontend / Systems Engineer
+4. Performance & Accessibility Engineer
+5. Visual QA / Release Reviewer
+
+When real subagents are supported they can be delegated independently. Otherwise Codex performs the same roles as sequential passes; it must not pretend subagents were used.
+
+## Skill loading
+
+The system deliberately does **not** inject every skill into every task. Skill descriptions are used to select the relevant workflows, and the full `SKILL.md` is loaded only when useful. Major animated-site work should start with:
+- `skills/award-site-architecture/SKILL.md`
+- `skills/website-agent-orchestration/SKILL.md`
+
+then load the specialist Three.js, GSAP, WebGL, interaction, performance or responsive skills needed for the feature.
+
+## Version
+
+See `.kian-codex-system-version`.
