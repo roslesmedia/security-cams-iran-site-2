@@ -1,6 +1,20 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "kian-cinematic-web-system",
-  "version": "1.0.0",
-  "description": "Reusable Codex skills for premium animated, WebGL, Three.js, GSAP, scroll-driven and production-ready web experiences."
+  "version": "1.1.0",
+  "description": "Reusable premium web-development skills for cinematic UI, Three.js, WebGL, GSAP, scroll storytelling, responsive motion, performance and visual QA.",
+  "author": {
+    "name": "Kian"
+  },
+  "repository": "https://github.com/roslesmedia/security-cams-iran-site-2",
+  "keywords": [
+    "web-development",
+    "threejs",
+    "webgl",
+    "gsap",
+    "animation",
+    "frontend",
+    "performance",
+    "visual-qa"
+  ]
 }

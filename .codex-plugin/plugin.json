@@ -1,0 +1,10 @@
+{
+  "name": "kian-cinematic-web-system",
+  "version": "1.1.0",
+  "description": "Premium animated and 3D website development system with specialist workflow guidance.",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Kian Cinematic Web System",
+    "shortDescription": "3D, motion, frontend, performance and visual QA skills"
+  }
+}

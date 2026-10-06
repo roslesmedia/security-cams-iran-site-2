@@ -1,0 +1,20 @@
+{
+  "name": "kian-codex-web",
+  "interface": {
+    "displayName": "Kian Codex Web"
+  },
+  "plugins": [
+    {
+      "name": "kian-cinematic-web-system",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "INSTALLED_BY_DEFAULT",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

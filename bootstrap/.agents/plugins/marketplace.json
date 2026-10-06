@@ -1,0 +1,21 @@
+{
+  "name": "kian-codex-web",
+  "interface": {
+    "displayName": "Kian Codex Web"
+  },
+  "plugins": [
+    {
+      "name": "kian-cinematic-web-system",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/roslesmedia/security-cams-iran-site-2.git",
+        "ref": "main"
+      },
+      "policy": {
+        "installation": "INSTALLED_BY_DEFAULT",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
