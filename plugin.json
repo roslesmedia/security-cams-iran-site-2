@@ -1,0 +1,6 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "kian-cinematic-web-system",
+  "version": "1.0.0",
+  "description": "Reusable Codex skills for premium animated, WebGL, Three.js, GSAP, scroll-driven and production-ready web experiences."
+}
