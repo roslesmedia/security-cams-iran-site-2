@@ -1,318 +1,187 @@
 import * as T from "three";
-/** Original procedural concept model: no branded geometry or claimed engineering specifications. */
-export function makeCamera() {
-  const root = new T.Group(),
-    groups: T.Group[] = [];
-  const ivory = new T.MeshStandardMaterial({
-      color: "#dedbd0",
-      roughness: 0.43,
-      metalness: 0.16,
-    }),
-    dark = new T.MeshStandardMaterial({
-      color: "#171b19",
-      roughness: 0.3,
-      metalness: 0.25,
-    }),
-    metal = new T.MeshStandardMaterial({
-      color: "#73796f",
-      roughness: 0.32,
-      metalness: 0.7,
-    }),
-    glass = new T.MeshPhysicalMaterial({
-      color: "#102a32",
-      roughness: 0.12,
-      metalness: 0.65,
-      clearcoat: 1,
-    });
-  const addPart = () => {
-    const g = new T.Group();
-    root.add(g);
-    groups.push(g);
-    return g;
-  };
-  function mesh(
-    g: T.Group,
-    geo: T.BufferGeometry,
-    mat: T.Material,
-    x = 0,
-    y = 0,
-    z = 0,
-  ) {
-    const m = new T.Mesh(geo, mat);
-    m.position.set(x, y, z);
-    g.add(m);
-    return m;
-  }
-  const disc = (
-    g: T.Group,
-    r: number,
-    h: number,
-    mat: T.Material,
-    z = 0,
-    x = 0,
-    y = 0,
-  ) => {
-    const m = mesh(g, new T.CylinderGeometry(r, r, h, 64), mat, x, y, z);
-    m.rotation.x = Math.PI / 2;
-    return m;
-  };
-  const housing = addPart();
-  const profile = [
-    new T.Vector2(0, -1.22),
-    new T.Vector2(0.4, -1.17),
-    new T.Vector2(0.85, -0.97),
-    new T.Vector2(1.13, -0.64),
-    new T.Vector2(1.29, -0.2),
-    new T.Vector2(1.3, 0.06),
-    new T.Vector2(1.19, 0.3),
-  ];
-  const shell = mesh(housing, new T.LatheGeometry(profile, 80), ivory);
-  shell.rotation.x = Math.PI / 2;
-  disc(housing, 1.16, 0.08, ivory, 0.19);
-  mesh(housing, new T.TorusGeometry(1.19, 0.06, 12, 80), ivory, 0, 0, 0.31);
-  const mount = addPart();
-  mesh(
-    mount,
-    new T.CylinderGeometry(1.2, 1.29, 0.3, 64),
-    ivory,
-    0,
-    -1.37,
-    -0.22,
-  );
-  mesh(
-    mount,
-    new T.CylinderGeometry(0.91, 1.02, 0.33, 64),
-    ivory,
-    0,
-    -1.11,
-    -0.22,
-  );
-  mesh(
-    mount,
-    new T.TorusGeometry(1.22, 0.018, 8, 64),
-    metal,
-    0,
-    -1.35,
-    -0.22,
-  ).rotation.x = Math.PI / 2;
-  for (let i = 0; i < 3; i++) {
-    const a = (i * Math.PI * 2) / 3;
-    mesh(
-      mount,
-      new T.CylinderGeometry(0.046, 0.046, 0.025, 12),
-      metal,
-      Math.cos(a) * 1.04,
-      -1.2,
-      -0.22 + Math.sin(a) * 1.04,
-    );
-  }
-  const board = addPart();
-  mesh(
-    board,
-    new T.BoxGeometry(0.9, 0.9, 0.045),
-    new T.MeshStandardMaterial({ color: "#756e41", roughness: 0.7 }),
-    0,
-    0,
-    0.08,
-  );
-  mesh(board, new T.BoxGeometry(0.31, 0.31, 0.06), dark, 0, 0, 0.13);
-  for (let i = 0; i < 8; i++) {
-    mesh(
-      board,
-      new T.BoxGeometry(0.09, 0.1, 0.035),
-      metal,
-      ((i % 4) - 1.5) * 0.2,
-      i < 4 ? 0.36 : -0.36,
-      0.12,
-    );
-  }
-  const optical = addPart();
-  disc(optical, 1.035, 0.15, dark, 0.4);
-  disc(optical, 0.57, 0.37, dark, 0.55);
-  for (let i = 0; i < 4; i++)
-    mesh(
-      optical,
-      new T.TorusGeometry(0.56 - i * 0.042, 0.016, 8, 64),
-      dark,
-      0,
-      0,
-      0.74 + i * 0.015,
-    );
-  disc(optical, 0.35, 0.025, glass, 0.81);
-  disc(optical, 0.17, 0.028, dark, 0.831);
-  const reflection = mesh(
-    optical,
-    new T.SphereGeometry(0.105, 20, 12),
-    glass,
-    -0.09,
-    0.1,
-    0.848,
-  );
-  reflection.scale.set(1, 0.4, 0.07);
-  const infrared = addPart();
-  mesh(infrared, new T.TorusGeometry(0.8, 0.11, 12, 72), dark, 0, 0, 0.5);
-  const ledGeo = new T.CylinderGeometry(0.075, 0.075, 0.065, 14),
-    leds = new T.InstancedMesh(ledGeo, metal, 18),
-    matrix = new T.Matrix4(),
-    q = new T.Quaternion().setFromEuler(new T.Euler(Math.PI / 2, 0, 0));
-  for (let i = 0; i < 18; i++) {
-    const a = (i * Math.PI * 2) / 18;
-    matrix.compose(
-      new T.Vector3(Math.cos(a) * 0.81, Math.sin(a) * 0.81, 0.655),
-      q,
-      new T.Vector3(1, 1, 1),
-    );
-    leds.setMatrixAt(i, matrix);
-  }
-  leds.instanceMatrix.needsUpdate = true;
-  infrared.add(leds);
-  const ledGlass = new T.InstancedMesh(
-    new T.CylinderGeometry(0.044, 0.044, 0.016, 12),
-    glass,
-    18,
-  );
-  for (let i = 0; i < 18; i++) {
-    const a = (i * Math.PI * 2) / 18;
-    matrix.compose(
-      new T.Vector3(Math.cos(a) * 0.81, Math.sin(a) * 0.81, 0.702),
-      q,
-      new T.Vector3(1, 1, 1),
-    );
-    ledGlass.setMatrixAt(i, matrix);
-  }
-  ledGlass.instanceMatrix.needsUpdate = true;
-  infrared.add(ledGlass);
-  const front = addPart();
-  mesh(front, new T.TorusGeometry(1.05, 0.075, 16, 96), metal, 0, 0, 0.57);
-  mesh(front, new T.TorusGeometry(1.155, 0.045, 12, 80), ivory, 0, 0, 0.48);
-  for (let i = 0; i < 4; i++) {
-    const a = (i * Math.PI) / 2 + 0.78;
-    disc(
-      front,
-      0.038,
-      0.03,
-      metal,
-      0.52,
-      Math.cos(a) * 1.14,
-      Math.sin(a) * 1.14,
-    );
-  }
-  // A local canvas wordmark on the housing — never external network texture.
-  if (typeof document !== "undefined") {
-    const c = document.createElement("canvas");
-    c.width = 512;
-    c.height = 160;
-    const ctx = c.getContext("2d")!;
-    ctx.fillStyle = "#282c27";
-    ctx.font = "bold 78px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("دیدبان", 256, 110);
-    const map = new T.CanvasTexture(c);
-    map.colorSpace = T.SRGBColorSpace;
-    const label = mesh(
-      housing,
-      new T.PlaneGeometry(0.57, 0.18),
-      new T.MeshBasicMaterial({ map, transparent: true, depthWrite: false }),
-      -0.74,
-      0.04,
-      0.51,
-    );
-    label.rotation.y = -0.52;
-  }
-  const base = addPart();
-  const baseMesh = mount.children[0];
-  base.attach(baseMesh);
-  mesh(housing, new T.TorusGeometry(1.26, 0.016, 8, 80), metal, 0, 0, -0.18);
-  return { root, groups };
-}
 
-export function makeArchetype(index: number) {
-  const camera = makeCamera();
-  if (index === 0) return camera;
-  const { root, groups } = camera;
-  const mat = new T.MeshStandardMaterial({
-      color: "#dddcd4",
-      roughness: 0.42,
-      metalness: 0.12,
-    }),
-    black = new T.MeshStandardMaterial({ color: "#202622", roughness: 0.24 });
-  groups[0].visible = false;
-  groups[1].visible = false;
-  groups[6].visible = false;
-  const body = new T.Group();
-  root.add(body);
-  function add(geo: T.BufferGeometry, material = mat, x = 0, y = 0, z = 0) {
-    const m = new T.Mesh(geo, material);
-    m.position.set(x, y, z);
-    body.add(m);
-    return m;
+/** Original unbranded engineering visualization; not a manufacturer's product model. */
+export function makeCamera() {
+  const root = new T.Group();
+  const groups: T.Group[] = [];
+  // A deterministic microscopic finish, shared by every painted casting. Linear maps.
+  const size = 128, pixels = new Uint8Array(size * size * 4);
+  let seed = 31;
+  for (let i = 0; i < size * size; i++) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const value = 112 + ((seed >>> 24) % 33);
+    pixels.set([value, value, value, 255], i * 4);
   }
-  if (index === 1 || index === 9) {
-    const tube = add(
-      new T.CylinderGeometry(0.81, 0.81, 2.2, 48),
-      mat,
-      0,
-      0,
-      -0.62,
-    );
-    tube.rotation.x = Math.PI / 2;
-    add(new T.BoxGeometry(0.4, 0.7, 0.4), mat, 0, -0.65, -1.2);
-    const b = add(
-      new T.CylinderGeometry(0.65, 0.65, 0.16, 40),
-      mat,
-      0,
-      -1.1,
-      -1.2,
-    );
-    b.rotation.x = 0;
-    groups.slice(2, 6).forEach((g) => g.scale.setScalar(0.7));
-  } else if (index === 2 || index === 3 || index === 7) {
-    add(
-      new T.SphereGeometry(1.02, 48, 28),
-      index === 2 ? black : mat,
-      0,
-      -0.1,
-      -0.22,
-    );
-    add(new T.CylinderGeometry(1.18, 1.2, 0.3, 48), mat, 0, 0.68, -0.22);
-    if (index === 3) {
-      add(new T.CylinderGeometry(0.62, 0.78, 0.95, 48), mat, 0, 1.21, -0.22);
-      add(new T.BoxGeometry(0.3, 0.35, 1.15), mat, 0, 1.68, -0.7);
-    }
-    groups.slice(2, 6).forEach((g) => {
-      g.scale.setScalar(0.63);
-      g.position.y = -0.15;
+  const finish = new T.DataTexture(pixels, size, size, T.RGBAFormat);
+  finish.wrapS = finish.wrapT = T.RepeatWrapping;
+  finish.repeat.set(7, 7);
+  finish.magFilter = T.LinearFilter;
+  finish.minFilter = T.LinearMipmapLinearFilter;
+  finish.generateMipmaps = true;
+  finish.needsUpdate = true;
+  const ivory = new T.MeshStandardMaterial({
+    color: "#dedbd0", roughness: 0.63, metalness: 0.08,
+    bumpMap: finish, bumpScale: 0.006,
+  });
+  const black = new T.MeshStandardMaterial({ color: "#111313", roughness: 0.36, metalness: 0.22 });
+  const rubber = new T.MeshStandardMaterial({ color: "#141615", roughness: 0.86, metalness: 0 });
+  const alloy = new T.MeshStandardMaterial({ color: "#7f8481", roughness: 0.34, metalness: 0.93 });
+  const edge = new T.MeshStandardMaterial({ color: "#3b403d", roughness: 0.28, metalness: 0.85 });
+  const glass = new T.MeshPhysicalMaterial({
+    color: "#080e12", metalness: 0.08, roughness: 0.035,
+    clearcoat: 1, clearcoatRoughness: 0.025, ior: 1.52,
+    specularColor: new T.Color("#a1aec3"), envMapIntensity: 1.2,
+  });
+  const irGlass = new T.MeshPhysicalMaterial({
+    color: "#161819", roughness: 0.12, metalness: 0.13,
+    clearcoat: 0.9, clearcoatRoughness: 0.08, envMapIntensity: 0.6,
+  });
+  const part = (name: string) => {
+    const group = new T.Group(); group.name = name;
+    root.add(group); groups.push(group); return group;
+  };
+  function mesh(g: T.Group, geometry: T.BufferGeometry, material: T.Material, x = 0, y = 0, z = 0) {
+    const m = new T.Mesh(geometry, material); m.position.set(x, y, z); g.add(m); return m;
+  }
+  function turned(g: T.Group, points: number[][], material: T.Material, x = 0, y = 0, z = 0, segments = 96) {
+    const m = mesh(g, new T.LatheGeometry(points.map(([r, depth]) => new T.Vector2(r, depth)), segments), material, x, y, z);
+    m.rotation.x = Math.PI / 2; return m;
+  }
+  function ring(g: T.Group, outer: number, inner: number, depth: number, z: number, material: T.Material) {
+    return turned(g, [[inner, z - depth / 2], [outer - 0.012, z - depth / 2], [outer, z - depth / 2 + 0.012], [outer, z + depth / 2 - 0.012], [outer - 0.012, z + depth / 2], [inner, z + depth / 2], [inner, z - depth / 2]], material);
+  }
+  function disc(g: T.Group, r: number, depth: number, material: T.Material, x = 0, y = 0, z = 0, segments = 64) {
+    const m = mesh(g, new T.CylinderGeometry(r, r, depth, segments), material, x, y, z); m.rotation.x = Math.PI / 2; return m;
+  }
+  function instances(g: T.Group, geometry: T.BufferGeometry, material: T.Material, poses: { p: number[]; r?: number[] }[]) {
+    const instanced = new T.InstancedMesh(geometry, material, poses.length);
+    const dummy = new T.Object3D();
+    poses.forEach(({ p, r }, i) => {
+      dummy.position.set(p[0], p[1], p[2]);
+      dummy.rotation.set(r?.[0] ?? 0, r?.[1] ?? 0, r?.[2] ?? 0);
+      dummy.updateMatrix(); instanced.setMatrixAt(i, dummy.matrix);
     });
-  } else {
-    add(
-      new T.BoxGeometry(
-        index === 8 ? 0.61 : 1.12,
-        index === 8 ? 1.95 : 1.68,
-        0.61,
-      ),
-      mat,
-      0,
-      0,
-      -0.2,
-    );
-    groups.slice(2, 6).forEach((g) => {
-      g.scale.setScalar(index === 8 ? 0.31 : 0.45);
-      g.position.y = 0.3;
-    });
-    if (index === 4)
-      add(new T.CylinderGeometry(0.72, 0.82, 0.14, 40), mat, 0, -1.02, -0.2);
-    if (index === 6) {
-      const panel = add(
-        new T.BoxGeometry(1.42, 1.7, 0.08),
-        black,
-        1.22,
-        0.52,
-        -0.2,
-      );
-      panel.rotation.y = -0.25;
-      panel.rotation.x = -0.3;
-      add(new T.BoxGeometry(0.1, 0.6, 0.1), mat, 0.9, -0.4, -0.2);
+    instanced.instanceMatrix.needsUpdate = true; g.add(instanced); return instanced;
+  }
+  const circular = (count: number, radius: number, z: number, offset = 0) => Array.from({ length: count }, (_, i) => {
+    const angle = i * Math.PI * 2 / count + offset;
+    return { p: [Math.cos(angle) * radius, Math.sin(angle) * radius, z], r: [Math.PI / 2, 0, angle] };
+  });
+  function fasteners(g: T.Group, poses: ReturnType<typeof circular>) {
+    instances(g, new T.CylinderGeometry(0.038, 0.046, 0.024, 16), alloy, poses);
+    // Recessed Torx sockets, rather than large shiny dots.
+    instances(g, new T.CylinderGeometry(0.015, 0.015, 0.0015, 6), black,
+      poses.map(({ p, r }) => ({ p: [p[0], p[1], p[2] + 0.0128], r })));
+  }
+
+  const housing = part("cast weatherproof housing");
+  const outer = new T.CatmullRomCurve3([
+    new T.Vector3(0.01, -1.05, 0), new T.Vector3(0.55, -0.97, 0),
+    new T.Vector3(0.91, -0.69, 0), new T.Vector3(1.125, -0.23, 0),
+    new T.Vector3(1.145, 0.15, 0), new T.Vector3(1.095, 0.45, 0),
+  ]).getPoints(28).map(p => [p.x, p.y]);
+  turned(housing, [...outer, [1.075, 0.485], [1.03, 0.488], [1.018, 0.462], [1.055, 0.15], [1.04, -0.21], [0.82, -0.66], [0.5, -0.9], [0.01, -0.955], [0.01, -1.05]], ivory);
+  // The narrow separation between the casting and threaded front bezel.
+  ring(housing, 1.085, 1.005, 0.032, 0.472, rubber);
+  const pivots = [-1, 1].map(side => ({ p: [side * 1.01, -0.37, -0.27], r: [0, 0, Math.PI / 2] }));
+  instances(housing, new T.CylinderGeometry(0.175, 0.185, 0.15, 40), ivory, pivots);
+  instances(housing, new T.CylinderGeometry(0.088, 0.094, 0.158, 32), edge, pivots);
+  instances(housing, new T.CylinderGeometry(0.047, 0.047, 0.164, 6), black, pivots);
+
+  const mount = part("tilt cradle");
+  // A stout, shallow swivel casting sits inside the base; no toy-like stalk.
+  mesh(mount, new T.CylinderGeometry(0.66, 0.89, 0.36, 80), ivory, 0, -1.02, -0.25);
+  mesh(mount, new T.CylinderGeometry(0.78, 0.79, 0.043, 80), rubber, 0, -1.208, -0.25);
+  for (const side of [-1, 1]) {
+    const support = mesh(mount, new T.CapsuleGeometry(0.12, 0.51, 8, 16), ivory, side * 0.92, -0.69, -0.28);
+    support.rotation.z = side * -0.16;
+  }
+
+  const board = part("sensor and signal board");
+  const pcb = new T.MeshStandardMaterial({ color: "#293b30", roughness: 0.66, metalness: 0.2 });
+  const copper = new T.MeshStandardMaterial({ color: "#a68b48", roughness: 0.43, metalness: 0.78 });
+  mesh(board, new T.BoxGeometry(0.87, 0.92, 0.04), pcb, 0, 0, -0.06);
+  mesh(board, new T.BoxGeometry(0.43, 0.44, 0.035), alloy, 0, 0, -0.018);
+  mesh(board, new T.BoxGeometry(0.34, 0.35, 0.039), black, 0, 0, 0.003);
+  mesh(board, new T.BoxGeometry(0.215, 0.225, 0.008), glass, 0, 0, 0.026);
+  const contacts = Array.from({ length: 20 }, (_, i) => ({ p: [(i % 10 - 4.5) * 0.037, i < 10 ? 0.237 : -0.237, -0.009] }));
+  instances(board, new T.BoxGeometry(0.019, 0.055, 0.025), copper, contacts);
+  const chips = Array.from({ length: 12 }, (_, i) => ({ p: [(i % 6 - 2.5) * 0.117, i < 6 ? 0.365 : -0.36, -0.022], r: [0, 0, i * 0.1] }));
+  instances(board, new T.BoxGeometry(0.06, 0.09, 0.034), black, chips);
+  fasteners(board, circular(4, 0.48, -0.012, Math.PI / 4));
+
+  const optical = part("multi element optical assembly");
+  turned(optical, [[0.25, 0.06], [0.37, 0.06], [0.37, 0.25], [0.43, 0.27], [0.43, 0.42], [0.46, 0.43], [0.46, 0.6], [0.44, 0.64], [0.335, 0.64], [0.3, 0.57], [0.25, 0.25], [0.25, 0.06]], black);
+  ring(optical, 0.445, 0.385, 0.08, 0.662, edge);
+  ring(optical, 0.421, 0.337, 0.053, 0.717, black);
+  for (let i = 0; i < 4; i++) ring(optical, 0.422, 0.395, 0.008, 0.688 + i * 0.012, edge);
+  // Convex coated glass responds to the actual environment. No painted-on reflections.
+  const lensPoints = [[0, 0.778], [0.08, 0.776], [0.16, 0.766], [0.24, 0.748], [0.315, 0.719], [0.332, 0.702], [0.33, 0.683], [0.24, 0.711], [0.12, 0.724], [0, 0.729]];
+  // Lathe profiles wind from rear to front along the outer surface.
+  // Reverse this axis-to-rim profile so the convex face has outward normals.
+  // A recessed aperture stays visible through the coated front element without
+  // a transmission render pass. Keep infrared and sensor glass opaque.
+  disc(optical, 0.31, 0.008, black, 0, 0, 0.676);
+  ring(optical, 0.30, 0.205, 0.01, 0.686, edge);
+  ring(optical, 0.202, 0.15, 0.009, 0.697, black);
+  mesh(optical, new T.RingGeometry(0.125, 0.155, 9), alloy, 0, 0, 0.706);
+  const opticalGlass = glass.clone();
+  opticalGlass.transparent = true;
+  opticalGlass.opacity = 0.6;
+  opticalGlass.depthWrite = false;
+  turned(optical, lensPoints.reverse(), opticalGlass);
+  ring(optical, 0.343, 0.316, 0.028, 0.711, rubber);
+  // Fine focus-barrel knurling is one draw call.
+  instances(optical, new T.BoxGeometry(0.009, 0.025, 0.06), edge,
+    circular(56, 0.441, 0.617).map(({ p }, i) => ({ p, r: [0, 0, i * Math.PI * 2 / 56] })));
+
+  const infrared = part("recessed infrared array");
+  ring(infrared, 1.01, 0.47, 0.095, 0.506, black);
+  ring(infrared, 0.986, 0.485, 0.026, 0.566, irGlass);
+  const emitters = circular(24, 0.762, 0.591, Math.PI / 24);
+  instances(infrared, new T.CylinderGeometry(0.052, 0.056, 0.026, 16), edge, emitters);
+  instances(infrared, new T.CylinderGeometry(0.034, 0.04, 0.019, 16), irGlass,
+    emitters.map(({ p, r }) => ({ p: [p[0], p[1], p[2] + 0.019], r })));
+  const emitterCaps = instances(infrared, new T.SphereGeometry(0.025, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), glass,
+    emitters.map(({ p }) => ({ p: [p[0], p[1], p[2] + 0.027], r: [Math.PI / 2, 0, 0] })));
+  emitterCaps.name = "unlit smoked emitter optics";
+  fasteners(infrared, circular(3, 0.932, 0.597, Math.PI / 6));
+  disc(infrared, 0.026, 0.007, glass, 0, -0.945, 0.592, 16);
+
+  const front = part("sealed front bezel");
+  ring(front, 1.079, 0.983, 0.115, 0.57, ivory);
+  ring(front, 0.994, 0.976, 0.024, 0.628, rubber);
+  ring(front, 1.056, 1.036, 0.008, 0.634, alloy);
+  fasteners(front, circular(4, 1.025, 0.642, Math.PI / 4));
+
+  const base = part("mounting foot");
+  // Bevelled lathed base creates a soft specular edge, not a flat oversized platter.
+  const foot = turned(base, [[0, -0.143], [0.95, -0.143], [1.015, -0.115], [1.035, -0.075], [1.035, 0.073], [1.018, 0.11], [0.975, 0.133], [0, 0.133]], ivory, 0, -1.37, -0.25);
+  foot.rotation.x = 0;
+  mesh(base, new T.CylinderGeometry(0.99, 0.99, 0.029, 80), rubber, 0, -1.51, -0.25);
+  // Top mounting screw heads and real recessed dark sockets.
+  const baseScrews = Array.from({ length: 3 }, (_, i) => {
+    const a = i * Math.PI * 2 / 3;
+    return { p: [Math.cos(a) * 0.88, -1.224, -0.25 + Math.sin(a) * 0.88] };
+  });
+  instances(base, new T.CylinderGeometry(0.037, 0.044, 0.016, 16), alloy, baseScrews);
+  instances(base, new T.CylinderGeometry(0.016, 0.016, 0.001, 6), black,
+    baseScrews.map(({ p }) => ({ p: [p[0], p[1] + 0.009, p[2]] })));
+
+  if (typeof document !== "undefined") {
+    const canvas = document.createElement("canvas"); canvas.width = 1024; canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#363935"; ctx.textAlign = "center"; ctx.font = "600 104px sans-serif";
+      ctx.fillText("دیدبان", 512, 143);
+      ctx.font = "23px sans-serif"; ctx.fillStyle = "#696b64"; ctx.fillText("D I D B A N", 512, 192);
+      const map = new T.CanvasTexture(canvas); map.colorSpace = T.SRGBColorSpace;
+      // Decal follows the casting using a very shallow cylindrical segment.
+      const geometry = new T.CylinderGeometry(1.149, 1.149, 0.21, 32, 1, true, -0.72, 0.53);
+      geometry.rotateX(Math.PI / 2);
+      const label = mesh(housing, geometry, new T.MeshStandardMaterial({ map, transparent: true, roughness: 0.68, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }), 0, 0, 0.045);
+      label.rotation.z = -Math.PI / 2;
     }
   }
-  return camera;
+  return { root, groups };
 }

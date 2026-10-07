@@ -42,7 +42,15 @@ network and power constraints. Eight FAQs and a full contact/footer close the pa
 
 The story renders on demand and pauses when hidden, offscreen or during product-viewer
 interaction. Camera DPR is capped at 1.5 desktop and 1.25 phone. The catalog uses
-local stills, never a renderer per card. WebGL failure/context loss retains a poster.
+local WebP stills, never a renderer per card. The 143-image set is approximately
+84% smaller than the previous PNG set. WebGL failure/context loss retains a poster.
+
+The camera models use textured powdercoat, beveled castings, layered convex optics,
+recessed IR elements and instanced fasteners. Story, viewer and stills share a calibrated
+studio environment. A generated photographic concept illustrates the selection section.
+Rendering caches layout measurements and DOM references, avoids redundant style writes,
+and starts after the HTML/poster can paint. Reduced-motion mode creates no story WebGL
+context; scroll rendering stops when settled. Large animated backdrop filters were removed.
 
 ## Editable data and truthful limitations
 
@@ -66,6 +74,7 @@ imagery is illustrative, not a customer photograph. See [asset provenance](docs/
 
 - `StoryStage.tsx`, `StoryTimeline.ts`: shared scene, DOM chapters and reversible progress.
 - `CameraModel.ts`: articulated demonstrator housing, optics, infrared ring, sensor and mount.
+- `StudioLighting.ts`: shared studio environment, tone mapping and lighting lifecycle.
 - `CatalogModel.ts`, `Product3DViewer.tsx`: corresponding generic category geometry and viewer.
 - `ProductCard.tsx`, `FAQ.tsx`: catalog cards and accessible disclosures.
 - `main.tsx`: routes, filters, drawers, basket, selection guide and contact flow.
@@ -79,6 +88,12 @@ record 100, combined filters/back navigation, drawer focus/Escape, basket quanti
 persistence/removal, three-product comparison, local inquiry validation, reduced-motion
 semantics and forced WebGL/context-loss fallbacks. Tested widths: 360, 390, 430, 768
 and 1440px, without horizontal overflow or runtime errors in those flows.
+
+The realism update was checked with the same catalog and interaction flows. Browser
+instrumentation confirmed no draw calls while the story is idle or offscreen, rendering
+resumes on scroll, live reduced-motion switching removes the story canvas and retains
+all seven chapters, and context loss restores the poster. The articulated turret uses
+49 draw calls and approximately 42k triangles in the isolated studio render.
 
 Story screenshots were reviewed at 0%, 15%, 32%, 50%, 68%, 88% and 100% on desktop
 and phone-size Chromium. Software-rendered Chromium is not a real-device GPU benchmark.

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import * as T from "three";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { createStudioLighting } from "./StudioLighting";
 import { makeCatalogModel } from "./CatalogModel";
 import { categories } from "./data";
 export default function Product3DViewer({
@@ -17,39 +17,6 @@ export default function Product3DViewer({
     const host = ref.current;
     if (!host) return;
     window.dispatchEvent(new CustomEvent("didban-viewer", { detail: true }));
-    let renderer: T.WebGLRenderer;
-    try {
-      renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
-    } catch {
-      const poster = document.createElement("img");
-      const fallbackShape = category === "panoramic" ? "panorama" : category;
-      poster.src = "/assets/camera-" + fallbackShape + ".png";
-      poster.alt =
-        "نمای مفهومی دوربین؛ نمایش سه‌بعدی در این مرورگر در دسترس نیست";
-      poster.style.cssText = "width:100%;height:100%;object-fit:contain";
-      host.appendChild(poster);
-      return () => {
-        host.replaceChildren();
-        window.dispatchEvent(
-          new CustomEvent("didban-viewer", { detail: false }),
-        );
-      };
-    }
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.25));
-    renderer.toneMapping = T.NeutralToneMapping;
-    host.appendChild(renderer.domElement);
-    const scene = new T.Scene(),
-      camera = new T.PerspectiveCamera(32, 1, 0.1, 30);
-    camera.position.set(0, 0.1, 8);
-    const pmrem = new T.PMREMGenerator(renderer),
-      room = new RoomEnvironment(),
-      env = pmrem.fromScene(room, 0.04);
-    room.dispose();
-    scene.environment = env.texture;
-    scene.add(new T.HemisphereLight(0xfffbf0, 0x61685a, 2));
-    const light = new T.DirectionalLight(0xffffff, 3);
-    light.position.set(-3, 4, 5);
-    scene.add(light);
     const ids = [
       "turret",
       "bullet",
@@ -68,6 +35,29 @@ export default function Product3DViewer({
       : category === "panoramic"
         ? "panorama"
         : ids[index];
+    let renderer: T.WebGLRenderer;
+    try {
+      renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+    } catch {
+      const poster = document.createElement("img");
+      poster.src = "/assets/camera-" + shape + ".webp";
+      poster.alt =
+        "نمای مفهومی دوربین؛ نمایش سه‌بعدی در این مرورگر در دسترس نیست";
+      poster.style.cssText = "width:100%;height:100%;object-fit:contain";
+      host.appendChild(poster);
+      return () => {
+        host.replaceChildren();
+        window.dispatchEvent(
+          new CustomEvent("didban-viewer", { detail: false }),
+        );
+      };
+    }
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.25));
+    host.appendChild(renderer.domElement);
+    const scene = new T.Scene(),
+      camera = new T.PerspectiveCamera(32, 1, 0.1, 30);
+    camera.position.set(0, 0.1, 8);
+    const lighting = createStudioLighting(renderer, scene);
     const root = makeCatalogModel(shape, finish);
     root.rotation.set(
       orientation === "downward" ? 0.12 : -0.12,
@@ -79,10 +69,21 @@ export default function Product3DViewer({
       0,
     );
     scene.add(root);
-    const render = () => renderer.render(scene, camera);
+    let frame = 0,
+      disposed = false,
+      contextLost = false;
+    const render = () => {
+      if (frame || disposed || contextLost || document.hidden) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        if (!disposed && !contextLost) renderer.render(scene, camera);
+      });
+    };
     const resize = () => {
-      renderer.setSize(host.clientWidth, host.clientHeight, false);
-      camera.aspect = host.clientWidth / host.clientHeight;
+      const width = Math.max(1, host.clientWidth),
+        height = Math.max(1, host.clientHeight);
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
       camera.updateProjectionMatrix();
       render();
     };
@@ -118,9 +119,10 @@ export default function Product3DViewer({
     host.addEventListener("keydown", key);
     const lost = (e: Event) => {
       e.preventDefault();
+      contextLost = true;
       renderer.domElement.style.display = "none";
       const img = document.createElement("img");
-      img.src = "/assets/camera-" + shape + ".png";
+      img.src = "/assets/camera-" + shape + ".webp";
       img.alt = "نمای مفهومی دوربین";
       img.style.cssText = "height:100%;width:100%;object-fit:contain";
       host.appendChild(img);
@@ -128,6 +130,8 @@ export default function Product3DViewer({
     renderer.domElement.addEventListener("webglcontextlost", lost);
     resize();
     return () => {
+      disposed = true;
+      cancelAnimationFrame(frame);
       observer.disconnect();
       host.removeEventListener("pointerdown", down);
       host.removeEventListener("pointermove", move);
@@ -135,21 +139,27 @@ export default function Product3DViewer({
       host.removeEventListener("pointercancel", up);
       host.removeEventListener("keydown", key);
       renderer.domElement.removeEventListener("webglcontextlost", lost);
-      scene.traverse((o) => {
-        if (o instanceof T.Mesh) {
-          o.geometry.dispose();
-          (Array.isArray(o.material) ? o.material : [o.material]).forEach(
-            (m) => {
-              Object.values(m).forEach((v) => {
-                if (v instanceof T.Texture) v.dispose();
-              });
-              m.dispose();
-            },
-          );
-        }
+      const geometries = new Set<T.BufferGeometry>();
+      const materials = new Set<T.Material>();
+      const textures = new Set<T.Texture>();
+      scene.traverse((object) => {
+        if (!(object instanceof T.Mesh)) return;
+        if (object instanceof T.InstancedMesh) object.dispose();
+        geometries.add(object.geometry);
+        (Array.isArray(object.material)
+          ? object.material
+          : [object.material]
+        ).forEach((material) => {
+          materials.add(material);
+          Object.values(material).forEach((value) => {
+            if (value instanceof T.Texture) textures.add(value);
+          });
+        });
       });
-      env.dispose();
-      pmrem.dispose();
+      geometries.forEach((geometry) => geometry.dispose());
+      materials.forEach((material) => material.dispose());
+      textures.forEach((texture) => texture.dispose());
+      lighting.dispose();
       renderer.dispose();
       host.replaceChildren();
       window.dispatchEvent(new CustomEvent("didban-viewer", { detail: false }));

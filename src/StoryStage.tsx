@@ -1,10 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as T from "three";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { createStudioLighting } from "./StudioLighting";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { makeCamera } from "./CameraModel";
-import { applyStory, phase, clamp } from "./StoryTimeline";
+import { applyStory, phase } from "./StoryTimeline";
 import "./story.css";
 gsap.registerPlugin(ScrollTrigger);
 const chapters = [
@@ -75,11 +75,16 @@ const chapters = [
   },
 ];
 const bounds = [0, 0.14, 0.24, 0.42, 0.54, 0.69, 0.84, 1.01];
-export default function StoryStage({
-  onThumbs,
-}: {
-  onThumbs?: (v: string[]) => void;
-}) {
+export default function StoryStage() {
+  const [reducedMotion, setReducedMotion] = useState(
+    () => matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  useEffect(() => {
+    const preference = matchMedia("(prefers-reduced-motion: reduce)");
+    const changed = () => setReducedMotion(preference.matches);
+    preference.addEventListener("change", changed);
+    return () => preference.removeEventListener("change", changed);
+  }, []);
   const trackRef = useRef<HTMLElement>(null),
     stageRef = useRef<HTMLDivElement>(null),
     canvasRef = useRef<HTMLDivElement>(null);
@@ -88,310 +93,306 @@ export default function StoryStage({
       stage = stageRef.current,
       host = canvasRef.current;
     if (!track || !stage || !host) return;
-    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let renderer: T.WebGLRenderer | undefined,
-      scene: T.Scene,
-      camera: T.PerspectiveCamera,
-      root: T.Group,
-      groups: T.Group[],
-      environment: T.WebGLRenderTarget | undefined,
-      pmrem: T.PMREMGenerator | undefined;
+    const chapterNodes = Array.from(
+      stage.querySelectorAll<HTMLElement>(".chapter-copy"),
+    );
+    const counter = stage.querySelector(".story-counter");
+    // The static story has the same content without paying for a WebGL context.
+    if (reducedMotion) {
+      chapterNodes.forEach((node) => {
+        node.style.opacity = "1";
+        node.style.visibility = "visible";
+        node.removeAttribute("aria-hidden");
+        node.inert = false;
+      });
+      return;
+    }
+
+    let renderer: T.WebGLRenderer | undefined;
+    let scene: T.Scene | undefined;
+    let camera: T.PerspectiveCamera | undefined;
+    let model: ReturnType<typeof makeCamera> | undefined;
+    let lighting: ReturnType<typeof createStudioLighting> | undefined;
+    let shadow: T.Mesh<T.PlaneGeometry, T.MeshBasicMaterial> | undefined;
     let current = 0,
       target = 0,
       raf = 0,
-      visible = true,
+      initRaf = 0,
+      last = 0;
+    let visible = true,
       viewerActive = false,
       disposed = false,
-      last = 0;
-    const labelPoint = new T.Vector3();
-    let labelWidth = 0,
-      labelHeight = 0,
-      labelTop = 0;
+      contextLost = false;
+    let width = 1,
+      height = 1,
+      mobile = false,
+      previousChapter = -1;
+    const styleCache = new WeakMap<HTMLElement, Map<string, string>>();
+    const write = (node: HTMLElement, property: string, value: string) => {
+      let cache = styleCache.get(node);
+      if (!cache) {
+        cache = new Map();
+        styleCache.set(node, cache);
+      }
+      if (cache.get(property) === value) return;
+      cache.set(property, value);
+      node.style.setProperty(property, value);
+    };
     function updateDOM(p: number) {
-      stage!.dataset.progress = p.toFixed(3);
-      stage!.style.setProperty(
+      if (!stage) return;
+      const progress = p.toFixed(3);
+      if (stage.dataset.progress !== progress)
+        stage.dataset.progress = progress;
+      write(
+        stage,
         "--graphite-rise",
-        `${(1 - phase(p, 0.135, 0.205)) * 100}%`,
+        `${((1 - phase(p, 0.135, 0.205)) * 100).toFixed(2)}%`,
       );
-      stage!.style.setProperty(
+      write(
+        stage,
         "--bone-rise",
-        `${(1 - phase(p, 0.84, 0.92)) * 100}%`,
+        `${((1 - phase(p, 0.84, 0.92)) * 100).toFixed(2)}%`,
       );
-      stage!.style.setProperty(
+      write(
+        stage,
         "--installation",
-        String(phase(p, 0.445, 0.51) * (1 - phase(p, 0.84, 0.89))),
+        (phase(p, 0.445, 0.51) * (1 - phase(p, 0.84, 0.89))).toFixed(3),
       );
-      stage!.style.setProperty("--night", String(phase(p, 0.56, 0.65)));
-      stage!.style.setProperty(
+      write(
+        stage,
         "--wipe",
-        `${(1 - phase(p, 0.56, 0.65)) * 100}%`,
+        `${((1 - phase(p, 0.56, 0.65)) * 100).toFixed(2)}%`,
       );
-      stage!.style.setProperty("--plan", String(phase(p, 0.7, 0.77)));
-      stage!.style.setProperty(
+      write(stage, "--plan", phase(p, 0.7, 0.77).toFixed(3));
+      write(
+        stage,
         "--event",
-        String(phase(p, 0.733, 0.77) * (1 - phase(p, 0.84, 0.88))),
+        (phase(p, 0.733, 0.77) * (1 - phase(p, 0.84, 0.88))).toFixed(3),
       );
-      stage!.style.setProperty(
+      write(
+        stage,
         "--engineering",
-        String(phase(p, 0.27, 0.335) * (1 - phase(p, 0.425, 0.475))),
+        (phase(p, 0.27, 0.335) * (1 - phase(p, 0.425, 0.475))).toFixed(3),
       );
-      stage!.dataset.chapter = String(
-        Math.max(
-          0,
-          bounds.findIndex((b, i) => p >= b && p < bounds[i + 1]),
-        ),
+      const chapter = Math.max(
+        0,
+        bounds.findIndex((b, i) => p >= b && p < bounds[i + 1]),
       );
-      stage!
-        .querySelectorAll<HTMLElement>(".chapter-copy")
-        .forEach((node, i) => {
-          const fadeIn =
-              i === 0
-                ? 1
-                : i === 6
-                  ? phase(p, 0.9, 0.92)
-                  : phase(p, bounds[i], bounds[i] + 0.026),
-            fadeOut = 1 - phase(p, bounds[i + 1] - 0.008, bounds[i + 1]);
-          const opacity = fadeIn * fadeOut;
-          node.style.opacity = String(opacity);
-          node.style.visibility = opacity > 0.01 ? "visible" : "hidden";
-          if (i === 6) node.style.color = "#232722";
-          node.style.transform = `translateY(${(1 - fadeIn) * 22 - fadeOut * 0}px)`;
-          node.setAttribute("aria-hidden", opacity > 0.01 ? "false" : "true");
-        });
-      const counter = stage!.querySelector(".story-counter");
-      if (counter)
-        counter.textContent = `0${
-          Math.max(
-            0,
-            bounds.findIndex((b, i) => p >= b && p < bounds[i + 1]),
-          ) + 1
-        } / 07`;
-    }
-    try {
-      renderer = new T.WebGLRenderer({
-        antialias: true,
-        alpha: true,
-        preserveDrawingBuffer: true,
-        powerPreference: "high-performance",
-      });
-      renderer.setPixelRatio(
-        Math.min(devicePixelRatio, innerWidth < 700 ? 1.25 : 1.5),
-      );
-      renderer.outputColorSpace = T.SRGBColorSpace;
-      renderer.toneMapping = T.NeutralToneMapping;
-      renderer.toneMappingExposure = 1.15;
-      host.appendChild(renderer.domElement);
-      scene = new T.Scene();
-      camera = new T.PerspectiveCamera(31, 1, 0.1, 60);
-      camera.position.set(0, 0.05, 10.9);
-      camera.lookAt(0, 0, 0);
-      pmrem = new T.PMREMGenerator(renderer);
-      const room = new RoomEnvironment();
-      environment = pmrem.fromScene(room, 0.04);
-      room.dispose();
-      scene.environment = environment.texture;
-      scene.environmentIntensity = 0.95;
-      scene.add(new T.HemisphereLight(0xfffcf2, 0x4c5550, 1.8));
-      const key = new T.DirectionalLight(0xfffaf0, 3.2);
-      key.position.set(-4, 5, 7);
-      scene.add(key);
-      const rim = new T.DirectionalLight(0xe9f1ff, 2.8);
-      rim.position.set(3, 3, -3);
-      scene.add(rim);
-      const model = makeCamera();
-      root = model.root;
-      groups = model.groups;
-      scene.add(root);
-      const shadowCanvas = document.createElement("canvas");
-      shadowCanvas.width = 256;
-      shadowCanvas.height = 128;
-      const ctx = shadowCanvas.getContext("2d")!,
-        gradient = ctx.createRadialGradient(128, 64, 2, 128, 64, 120);
-      gradient.addColorStop(0, "rgba(35,38,31,.3)");
-      gradient.addColorStop(1, "rgba(35,38,31,0)");
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 256, 128);
-      const shadowTexture = new T.CanvasTexture(shadowCanvas);
-      const shadow = new T.Mesh(
-        new T.PlaneGeometry(4.4, 1.1),
-        new T.MeshBasicMaterial({
-          map: shadowTexture,
-          transparent: true,
-          depthWrite: false,
-        }),
-      );
-      shadow.position.set(-2, -1.65, -0.3);
-      scene.add(shadow);
-      function render() {
-        if (!renderer || disposed) return;
-        const state = applyStory(
-          current,
-          root,
-          groups,
-          host!.clientWidth < 700,
+      if (chapter !== previousChapter) {
+        stage.dataset.chapter = String(chapter);
+        if (counter) counter.textContent = `0${chapter + 1} / 07`;
+        previousChapter = chapter;
+      }
+      chapterNodes.forEach((node, i) => {
+        const fadeIn =
+          i === 0
+            ? 1
+            : i === 6
+              ? phase(p, 0.9, 0.92)
+              : phase(p, bounds[i], bounds[i] + 0.026);
+        const opacity =
+          fadeIn * (1 - phase(p, bounds[i + 1] - 0.008, bounds[i + 1]));
+        const hidden = opacity <= 0.01;
+        write(node, "opacity", opacity.toFixed(3));
+        write(node, "visibility", hidden ? "hidden" : "visible");
+        write(
+          node,
+          "transform",
+          `translate3d(0, ${((1 - fadeIn) * 22).toFixed(2)}px, 0)`,
         );
-        shadow.visible = current < 0.14 || current > 0.89;
-        shadow.position.x = root.position.x;
-        shadow.scale.setScalar(root.scale.x);
-        scene.environmentIntensity = 1 - 0.15 * state.explode;
-        renderer.render(scene, camera);
-        stage!
-          .querySelectorAll<HTMLElement>(".explosion-labels span")
-          .forEach((label, i) => {
-            groups[[3, 4, 2, 0, 1][i]].getWorldPosition(labelPoint);
-            labelPoint.project(camera);
-            label.style.left = `${(labelPoint.x * 0.5 + 0.5) * labelWidth}px`;
-            label.style.top = `${(-labelPoint.y * 0.5 + 0.5) * labelHeight + labelTop + 90}px`;
-          });
-        stage!.classList.add("webgl-ready");
-      }
-      function resize() {
-        if (!renderer) return;
-        const w = host!.clientWidth,
-          h = host!.clientHeight;
-        labelWidth = w;
-        labelHeight = h;
-        labelTop = host!.offsetTop;
-        renderer.setSize(w, h, false);
-        camera.aspect = w / h;
-        camera.updateProjectionMatrix();
-        render();
-      }
-      function tick(time: number) {
-        raf = 0;
-        if (disposed || document.hidden || !visible || viewerActive) return;
-        const dt = Math.min(0.25, (time - last) / 1000) || 0.016;
-        last = time;
-        current += (target - current) * (1 - Math.exp(-12 * dt));
-        if (Math.abs(target - current) < 0.0002) current = target;
-        if (!reduced) updateDOM(current);
-        render();
-        if (current !== target) raf = requestAnimationFrame(tick);
-      }
-      const wake = () => {
-        if (!raf && !disposed) {
-          last = performance.now();
-          raf = requestAnimationFrame(tick);
+        if (node.getAttribute("aria-hidden") !== String(hidden)) {
+          node.setAttribute("aria-hidden", String(hidden));
+          node.inert = hidden;
         }
-      };
-      const trigger = reduced
-        ? null
-        : ScrollTrigger.create({
-            trigger: track,
-            start: "top top",
-            end: "bottom bottom",
-            onUpdate: (s) => {
-              target = s.progress;
-              wake();
-            },
-            onRefresh: (s) => {
-              target = s.progress;
-              current = target;
-              wake();
-            },
-          });
-      const resizeObserver = new ResizeObserver(resize);
-      resizeObserver.observe(host);
-      const intersection = new IntersectionObserver(([entry]) => {
-        visible = entry.isIntersecting;
-        if (visible) wake();
       });
-      intersection.observe(stage);
-      const visibility = () => {
-        if (!document.hidden) wake();
-      };
-      document.addEventListener("visibilitychange", visibility);
-      const viewer = (event: Event) => {
-        viewerActive = Boolean((event as CustomEvent).detail);
-        if (!viewerActive) wake();
-      };
-      window.addEventListener("didban-viewer", viewer);
-      const lost = (event: Event) => {
-        event.preventDefault();
-        stage.classList.remove("webgl-ready");
-        stage.classList.add("story-fallback");
-      };
-      renderer.domElement.addEventListener("webglcontextlost", lost);
-      const restored = () => {
-        stage.classList.remove("story-fallback");
-        wake();
-      };
-      renderer.domElement.addEventListener("webglcontextrestored", restored);
-      resize();
-      updateDOM(0);
-      if (reduced) {
-        track.classList.add("reduced-story");
-        stage.querySelectorAll<HTMLElement>(".chapter-copy").forEach((node) => {
-          node.style.opacity = "1";
-          node.style.visibility = "visible";
-          node.removeAttribute("aria-hidden");
-        });
-      }
-      ScrollTrigger.refresh();
-      return () => {
-        disposed = true;
-        cancelAnimationFrame(raf);
-        trigger?.kill();
-        resizeObserver.disconnect();
-        intersection.disconnect();
-        document.removeEventListener("visibilitychange", visibility);
-        window.removeEventListener("didban-viewer", viewer);
-        renderer?.domElement.removeEventListener("webglcontextlost", lost);
-        renderer?.domElement.removeEventListener(
-          "webglcontextrestored",
-          restored,
-        );
-        const geos = new Set<T.BufferGeometry>(),
-          mats = new Set<T.Material>(),
-          textures = new Set<T.Texture>();
-        scene.traverse((o) => {
-          if (o instanceof T.Mesh) {
-            geos.add(o.geometry);
-            (Array.isArray(o.material) ? o.material : [o.material]).forEach(
-              (m) => {
-                mats.add(m);
-                Object.values(m).forEach((v) => {
-                  if (v instanceof T.Texture) textures.add(v);
-                });
-              },
-            );
-          }
-        });
-        geos.forEach((g) => g.dispose());
-        mats.forEach((m) => m.dispose());
-        textures.forEach((t) => t.dispose());
-        environment?.dispose();
-        pmrem?.dispose();
-        renderer?.dispose();
-        host.replaceChildren();
-      };
-    } catch {
-      stage.classList.add("story-fallback");
-      const trigger = reduced
-        ? null
-        : ScrollTrigger.create({
-            trigger: track,
-            start: "top top",
-            end: "bottom bottom",
-            onUpdate: (s) => updateDOM(s.progress),
-          });
-      updateDOM(0);
-      if (reduced) {
-        track.classList.add("reduced-story");
-        stage.querySelectorAll<HTMLElement>(".chapter-copy").forEach((node) => {
-          node.style.opacity = "1";
-          node.style.visibility = "visible";
-          node.removeAttribute("aria-hidden");
-        });
-      }
-      return () => {
-        disposed = true;
-        trigger?.kill();
-        renderer?.dispose();
-        host.replaceChildren();
-      };
     }
-  }, [onThumbs]);
+    function render() {
+      if (!renderer || !scene || !camera || !model || contextLost || disposed)
+        return;
+      applyStory(current, model.root, model.groups, mobile);
+      if (shadow) {
+        shadow.visible = current < 0.14 || current > 0.89;
+        shadow.position.x = model.root.position.x;
+        shadow.position.y = model.root.position.y - model.root.scale.x * 1.57;
+        shadow.scale.setScalar(model.root.scale.x);
+      }
+      renderer.render(scene, camera);
+      if (!stage!.classList.contains("webgl-ready"))
+        stage!.classList.add("webgl-ready");
+    }
+    function tick(time: number) {
+      raf = 0;
+      if (disposed || document.hidden || !visible || viewerActive) return;
+      const dt = Math.min(0.25, (time - last) / 1000) || 1 / 60;
+      last = time;
+      current += (target - current) * (1 - Math.exp(-12 * dt));
+      if (Math.abs(target - current) < 0.00008) current = target;
+      updateDOM(current);
+      render();
+      if (current !== target) raf = requestAnimationFrame(tick);
+    }
+    function wake() {
+      if (!raf && !disposed && !document.hidden && visible && !viewerActive) {
+        last = performance.now();
+        raf = requestAnimationFrame(tick);
+      }
+    }
+    function resize() {
+      if (!host) return;
+      // All layout reads stay in ResizeObserver, never in the animation loop.
+      width = Math.max(1, host.clientWidth);
+      height = Math.max(1, host.clientHeight);
+      mobile = width < 700;
+      if (renderer && camera) {
+        renderer.setSize(width, height, false);
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+      }
+      wake();
+    }
+    const trigger = ScrollTrigger.create({
+      trigger: track,
+      start: "top top",
+      end: "bottom bottom",
+      onUpdate: (s) => {
+        target = s.progress;
+        wake();
+      },
+      onRefresh: (s) => {
+        target = s.progress;
+        current = target;
+        wake();
+      },
+    });
+    const resizeObserver = new ResizeObserver(resize);
+    resizeObserver.observe(host);
+    const intersection = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible) wake();
+    });
+    intersection.observe(stage);
+    const visibility = () => {
+      if (!document.hidden) wake();
+    };
+    const viewer = (event: Event) => {
+      viewerActive = Boolean((event as CustomEvent).detail);
+      if (!viewerActive) wake();
+    };
+    const lost = (event: Event) => {
+      event.preventDefault();
+      contextLost = true;
+      stage.classList.remove("webgl-ready");
+      stage.classList.add("story-fallback");
+    };
+    const restored = () => {
+      if (renderer && scene) {
+        lighting?.dispose();
+        lighting = createStudioLighting(renderer, scene);
+      }
+      contextLost = false;
+      stage.classList.remove("story-fallback");
+      wake();
+    };
+    document.addEventListener("visibilitychange", visibility);
+    window.addEventListener("didban-viewer", viewer);
+    updateDOM(trigger.progress);
+    resize();
+
+    // Give the HTML heading and poster an actual paint before compiling shaders.
+    initRaf = requestAnimationFrame(() => {
+      initRaf = requestAnimationFrame(() => {
+        if (disposed) return;
+        try {
+          renderer = new T.WebGLRenderer({
+            antialias: true,
+            alpha: true,
+            powerPreference: "high-performance",
+          });
+          renderer.setPixelRatio(
+            Math.min(devicePixelRatio, mobile ? 1.25 : 1.5),
+          );
+          scene = new T.Scene();
+          camera = new T.PerspectiveCamera(31, width / height, 0.1, 60);
+          camera.position.set(0, 0.05, 10.9);
+          camera.lookAt(0, 0, 0);
+          lighting = createStudioLighting(renderer, scene);
+          model = makeCamera();
+          scene.add(model.root);
+          const shadowCanvas = document.createElement("canvas");
+          shadowCanvas.width = shadowCanvas.height = 128;
+          const ctx = shadowCanvas.getContext("2d")!;
+          const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 62);
+          gradient.addColorStop(0, "rgba(18,21,17,.25)");
+          gradient.addColorStop(0.4, "rgba(18,21,17,.12)");
+          gradient.addColorStop(1, "rgba(18,21,17,0)");
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, 128, 128);
+          shadow = new T.Mesh(
+            new T.PlaneGeometry(4.2, 0.65),
+            new T.MeshBasicMaterial({
+              map: new T.CanvasTexture(shadowCanvas),
+              transparent: true,
+              depthWrite: false,
+              toneMapped: false,
+            }),
+          );
+          shadow.position.z = -0.4;
+          scene.add(shadow);
+          renderer.domElement.addEventListener("webglcontextlost", lost);
+          renderer.domElement.addEventListener(
+            "webglcontextrestored",
+            restored,
+          );
+          renderer.setSize(width, height, false);
+          host.appendChild(renderer.domElement);
+          wake();
+        } catch {
+          stage.classList.add("story-fallback");
+          renderer?.dispose();
+          renderer = undefined;
+        }
+      });
+    });
+    return () => {
+      disposed = true;
+      cancelAnimationFrame(raf);
+      cancelAnimationFrame(initRaf);
+      trigger.kill();
+      resizeObserver.disconnect();
+      intersection.disconnect();
+      document.removeEventListener("visibilitychange", visibility);
+      window.removeEventListener("didban-viewer", viewer);
+      renderer?.domElement.removeEventListener("webglcontextlost", lost);
+      renderer?.domElement.removeEventListener(
+        "webglcontextrestored",
+        restored,
+      );
+      const geos = new Set<T.BufferGeometry>(),
+        mats = new Set<T.Material>(),
+        textures = new Set<T.Texture>();
+      scene?.traverse((object) => {
+        if (!(object instanceof T.Mesh)) return;
+        if (object instanceof T.InstancedMesh) object.dispose();
+        geos.add(object.geometry);
+        (Array.isArray(object.material)
+          ? object.material
+          : [object.material]
+        ).forEach((material) => {
+          mats.add(material);
+          Object.values(material).forEach((value) => {
+            if (value instanceof T.Texture) textures.add(value);
+          });
+        });
+      });
+      geos.forEach((geometry) => geometry.dispose());
+      mats.forEach((material) => material.dispose());
+      textures.forEach((texture) => texture.dispose());
+      lighting?.dispose();
+      renderer?.dispose();
+      renderer?.domElement.remove();
+      stage.classList.remove("webgl-ready", "story-fallback");
+    };
+  }, [reducedMotion]);
   return (
     <section
       ref={trackRef}
@@ -414,7 +415,7 @@ export default function StoryStage({
         <div ref={canvasRef} className="story-canvas">
           <img
             className="story-poster"
-            src="/assets/camera-poster.png"
+            src="/assets/camera-poster.webp"
             alt="دوربین نظارتی عاجی دیدبان"
           />
         </div>
@@ -432,14 +433,14 @@ export default function StoryStage({
                 className="reduced-chapter-image"
                 src={
                   i === 0
-                    ? "/assets/camera-turret.png"
+                    ? "/assets/camera-turret.webp"
                     : i === 1
-                      ? "/assets/story-macro.png"
+                      ? "/assets/story-macro.webp"
                       : i === 2
-                        ? "/assets/story-exploded.png"
+                        ? "/assets/story-exploded.webp"
                         : i < 6
                           ? "/assets/store.png"
-                          : "/assets/camera-turret.png"
+                          : "/assets/camera-turret.webp"
                 }
                 alt={
                   i === 2

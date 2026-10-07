@@ -283,8 +283,8 @@ export const products: Product[] = groups.flatMap((group, categoryIndex) =>
       connection,
       space,
       imageUrls: [
-        `/assets/camera-${imageShape}-v${variant}.png`,
-        `/assets/camera-${imageShape}-v${variant}-side.png`,
+        `/assets/camera-${imageShape}-v${variant}.webp`,
+        `/assets/camera-${imageShape}-v${variant}-side.webp`,
       ],
       model3dId: group.key === "panoramic" ? "panorama" : group.key,
       verifiedSpecs: {},

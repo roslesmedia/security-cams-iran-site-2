@@ -77,7 +77,7 @@ const emptyFilters: Filters = {
 };
 const media = (p: Product) =>
   (p as any).imageUrls?.[0] ||
-  `/assets/camera-${["turret", "bullet", "dome", "ptz", "indoor", "battery", "solar", "panorama", "doorbell", "thermal"][categories.indexOf(p.category)] || "bullet"}.png`;
+  `/assets/camera-${["turret", "bullet", "dome", "ptz", "indoor", "battery", "solar", "panorama", "doorbell", "thermal"][categories.indexOf(p.category)] || "bullet"}.webp`;
 const price = (p: Product) =>
   p.priceToman === null ? "استعلام قیمت" : `${fa(p.priceToman)} تومان`;
 
@@ -327,7 +327,7 @@ function App() {
       height="420"
       alt={p.name}
       onError={(e) => {
-        e.currentTarget.src = "/assets/camera-bullet.png";
+        e.currentTarget.src = "/assets/camera-bullet.webp";
         e.currentTarget.onerror = null;
       }}
     />
@@ -737,11 +737,11 @@ function App() {
               </div>
               <div className="selection-photo">
                 <img
-                  src="/assets/installation-editorial.png"
-                  alt="نمای مفهومی نصب یک دوربین در ورودی ساختمان"
+                  src="/assets/camera-studio-photo.png"
+                  alt="نمای نزدیک مفهومی از بدنه فلزی، شیشه اپتیکی و پایه دوربین"
                   loading="lazy"
                 />
-                <span>نمای مفهومی نصب</span>
+                <span>نمای مفهومی دوربین</span>
               </div>
             </section>
             <section className="about section wrap" id="about">
